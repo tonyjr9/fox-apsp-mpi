@@ -1,0 +1,103 @@
+#include "matrix.h"
+#include "matrix_io.h"
+#include "test_util.h"
+
+static Matrix *read_str(const char *text) {
+  FILE *f = tmpfile();
+  fputs(text, f);
+  rewind(f);
+  Matrix *m = matrix_read(f);
+  fclose(f);
+  return m;
+}
+
+static void print_str(const Matrix *m, char *buf, size_t size) {
+  FILE *f = tmpfile();
+  matrix_print(f, m);
+  rewind(f);
+  size_t got = fread(buf, 1, size - 1, f);
+  buf[got] = '\0';
+  fclose(f);
+}
+
+static void test_assignment_example(void) {
+  const char *in =
+      "6\n0 2 0 5 0 0\n0 0 0 0 0 0\n0 2 0 0 0 5\n"
+      "0 0 0 0 1 0\n3 9 3 0 0 0\n0 0 0 0 1 0\n";
+  Matrix *m = read_str(in);
+  CHECK(m != NULL && m->n == 6);
+  if (m == NULL)
+      return;
+
+  CHECK(MAT(m, 0, 1) == 2);
+  CHECK(MAT(m, 0, 2) == INF);
+  CHECK(MAT(m, 4, 1) == 9);
+  for (uint32_t i = 0; i < 6; i++)
+      CHECK(MAT(m, i, i) == 0);
+
+  char out[256];
+  print_str(m, out, sizeof out);
+  CHECK(strcmp(out, in + 2) == 0);
+  matrix_free(m);
+}
+
+static void test_tiny_sizes(void) {
+  Matrix *m1 = read_str("1\n0\n");
+  CHECK(m1 != NULL && m1->n == 1 && MAT(m1, 0, 0) == 0);
+  matrix_free(m1);
+
+  Matrix *m2 = read_str("2\n0 3\n4 0\n");
+  CHECK(m2 != NULL && MAT(m2, 0, 1) == 3 && MAT(m2, 1, 0) == 4);
+  matrix_free(m2);
+}
+
+static void test_diagonal_forced_to_zero(void) {
+  Matrix *m = read_str("2\n5 1\n1 9\n");
+  CHECK(m != NULL);
+  if (m == NULL)
+      return;
+  CHECK(MAT(m, 0, 0) == 0 && MAT(m, 1, 1) == 0);
+  matrix_free(m);
+}
+
+static void test_no_edges_prints_zeros(void) {
+  Matrix *m = read_str("3\n0 0 0\n0 0 0\n0 0 0\n");
+  CHECK(m != NULL);
+  if (m == NULL)
+      return;
+  CHECK(MAT(m, 0, 1) == INF);
+
+  char out[64];
+  print_str(m, out, sizeof out);
+  CHECK(strcmp(out, "0 0 0\n0 0 0\n0 0 0\n") == 0);
+  matrix_free(m);
+}
+
+static void test_print_inf_as_zero(void) {
+  Matrix *m = matrix_create(2, INF);
+  MAT(m, 0, 0) = 0;
+  MAT(m, 1, 1) = 0;
+  MAT(m, 0, 1) = 5;
+  char out[64];
+  print_str(m, out, sizeof out);
+  CHECK(strcmp(out, "0 5\n0 0\n") == 0);
+  matrix_free(m);
+}
+
+static void test_malformed_input(void) {
+  CHECK(read_str("") == NULL);
+  CHECK(read_str("abc\n") == NULL);
+  CHECK(read_str("0\n") == NULL);
+  CHECK(read_str("3\n0 1 2\n") == NULL);
+  CHECK(read_str("2\n0 1\n2") == NULL);
+}
+
+int main(void) {
+  test_assignment_example();
+  test_tiny_sizes();
+  test_diagonal_forced_to_zero();
+  test_no_edges_prints_zeros();
+  test_print_inf_as_zero();
+  test_malformed_input();
+  return test_report("test_matrix_io");
+}
