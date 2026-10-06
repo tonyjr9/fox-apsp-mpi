@@ -3,7 +3,7 @@
 
 #include "utils.h"
 
-#define INF ((u32)(UINT32_MAX / 2))
+#define INF          ((u32)(UINT32_MAX / 2))
 #define MAT(m, i, j) ((m).data[(i) * (m).n + (j)]) 
 
 typedef struct matrix Matrix;

@@ -1,5 +1,4 @@
-#include "../common/matrix.h"
-#include "../common/matrix_io.h"
+#include "apsp_seq.h"
 
 Matrix apsp(Matrix m) {
   Matrix r = matrix_create(m.n, 0);
@@ -14,11 +13,4 @@ Matrix apsp(Matrix m) {
   }
 
   return r;
-}
-
-int main(int argc, char **argv) { 
-
-  Matrix m = matrix_read(stdin);
-
-  return 0;
 }
