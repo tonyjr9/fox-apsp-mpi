@@ -1,8 +1,7 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 
-#include <stdint.h>
-#include <stdbool.h>
+#include "utils.h"
 
 #define INF ((u32)(UINT32_MAX / 2))
 #define MAT(m, i, j) ((m).data[(i) * (m).n + (j)]) 
