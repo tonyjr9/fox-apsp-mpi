@@ -5,12 +5,16 @@
 #include <stdbool.h>
 
 #define INF ((u32)(UINT32_MAX / 2))
-#define MAT(m, i, j) ((m)->data[(i) * (m)->n + (j)]) 
+#define MAT(m, i, j) ((m).data[(i) * (m).n + (j)]) 
 
-typedef struct Matrix {
-  u32 n;
-  u32 *data;
-} Matrix;
+typedef struct matrix Matrix;
+
+#define MATRIX_NULL { .n = 0, .data = NULL }
+
+struct matrix {
+  u32  n;
+  u32* data;
+};
 
 Matrix matrix_create (u32 n, u32 fill);
 Matrix matrix_copy   (const Matrix m);
