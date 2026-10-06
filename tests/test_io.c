@@ -4,8 +4,8 @@
 #include "matrix.h"
 #include "matrix_io.h"
 
-static void print_raw(const Matrix *m)
-{
+static void print_raw(const Matrix *m) {
+    printf("\n");
     for (uint32_t i = 0; i < m->n; i++) {
         for (uint32_t j = 0; j < m->n; j++) {
             if (MAT(m, i, j) == INF)

@@ -4,18 +4,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct Matrix {
-  u32 n;
-  u32 *data;
-} Matrix;
+static void die_oom(void) {
+    fprintf(stderr, "matrix: out of memory\n");
+    exit(EXIT_FAILURE);
+}
 
 Matrix *matrix_create(u32 n, u32 fill) {
   Matrix *m = malloc(sizeof *m);
 
-  if (m == NULL){
-    fprintf(stderr, "matrix: out of memory\n");
-    exit(EXIT_FAILURE);
-  }
+  if (m == NULL) 
+    die_oom();
 
   size_t count = (size_t)n * n;
     m->n = n;

@@ -6,6 +6,7 @@
 
 #define INF ((uint32_t)(UINT32_MAX / 2))
 #define MAT(m, i, j) ((m)->data[(i) * (m)->n + (j)]) 
+typedef uint32_t u32;
 
 typedef struct Matrix {
   uint32_t n;
