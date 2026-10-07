@@ -4,8 +4,7 @@
 #include "matrix.h"
 #include "utils.h"
 
-Matrix minplus_multiply(Matrix A, Matrix B);
-void   minplus_accumulate(Matrix C, Matrix A, Matrix B);
-Matrix minplus_apsp(Matrix M);
+void   minplus_accumulate (Matrix c, const Matrix a, const Matrix b);
+Matrix minplus_apsp       (Matrix m);
 
 #endif

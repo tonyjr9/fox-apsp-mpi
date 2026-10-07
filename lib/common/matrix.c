@@ -25,7 +25,8 @@ Matrix matrix_create(const u32 n, const u32 fill) {
 }
 
 void matrix_free(Matrix m) {
-  free(m.data);
+  if (m.data != NULL)
+    free(m.data);
 }
 
 Matrix matrix_copy(const Matrix m) {

@@ -14,7 +14,7 @@ struct matrix {
   u32* data;
 };
 
-Matrix matrix_create (u32 n, u32 fill);
+Matrix matrix_create (const u32 n, const u32 fill);
 Matrix matrix_copy   (const Matrix m);
 bool   matrix_equal  (const Matrix a, const Matrix b);
 void   matrix_free   (Matrix m);
