@@ -14,10 +14,10 @@ FOX_OBJ := $(BUILD)/fox/main.o $(BUILD)/lib/mpi/fox.o
 TESTS    := test_matrix test_matrix_io test_minplus
 TEST_BIN := $(addprefix $(BUILD)/tests/,$(TESTS))
 
-.PHONY: all test check clean
+.PHONY: all test check check-seq time-seq clean
 
-# "make" must produce ./fox (assignment requirement); seq is the baseline.
-all: fox seq
+# The MPI target will be enabled once Fox's implementation is complete.
+all: seq
 
 fox: $(FOX_OBJ) $(COMMON_OBJ)
 	$(MPICC) $(CFLAGS) -o $@ $^
@@ -50,9 +50,16 @@ $(BUILD)/tests/%: tests/%.c tests/test_util.h $(COMMON_OBJ)
 test: $(TEST_BIN)
 	@for t in $(TEST_BIN); do ./$$t || exit 1; done
 
-# Full regression on tests/examples (needs ./seq and/or ./fox)
-check: all
+check-seq: seq
 	./tests/run_tests.sh
+
+check: test check-seq
+
+INPUT ?= tests/examples/input/input6
+
+time-seq: seq
+	start=$$(date +%s%N); ./seq < "$(INPUT)" > /dev/null; end=$$(date +%s%N); \
+	awk -v start="$$start" -v end="$$end" 'BEGIN { printf "elapsed_ms=%.3f\n", (end - start) / 1000000 }'
 
 clean:
 	rm -rf $(BUILD) seq fox

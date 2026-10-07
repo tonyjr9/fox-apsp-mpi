@@ -1,3 +1,11 @@
+#ifndef TEST_UTIL_H
+#define TEST_UTIL_H
+
+#include <stdio.h>
+
+static unsigned tests_run;
+static unsigned tests_failed;
+
 #define CHECK(cond)                                                 \
   do {                                                              \
       tests_run++;                                                  \
@@ -7,3 +15,16 @@
                   #cond);                                           \
       }                                                             \
   } while (0)
+
+static int test_report(const char *name) {
+  if (tests_failed == 0) {
+    printf("PASS %s (%u checks)\n", name, tests_run);
+    return 0;
+  }
+
+  fprintf(stderr, "FAIL %s (%u/%u checks failed)\n",
+          name, tests_failed, tests_run);
+  return 1;
+}
+
+#endif

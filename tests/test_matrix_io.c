@@ -2,16 +2,18 @@
 #include "matrix_io.h"
 #include "test_util.h"
 
-static Matrix *read_str(const char *text) {
+#include <string.h>
+
+static Matrix read_str(const char *text) {
   FILE *f = tmpfile();
   fputs(text, f);
   rewind(f);
-  Matrix *m = matrix_read(f);
+  Matrix m = matrix_read(f);
   fclose(f);
   return m;
 }
 
-static void print_str(const Matrix *m, char *buf, size_t size) {
+static void print_str(const Matrix m, char *buf, size_t size) {
   FILE *f = tmpfile();
   matrix_print(f, m);
   rewind(f);
@@ -24,9 +26,9 @@ static void test_assignment_example(void) {
   const char *in =
       "6\n0 2 0 5 0 0\n0 0 0 0 0 0\n0 2 0 0 0 5\n"
       "0 0 0 0 1 0\n3 9 3 0 0 0\n0 0 0 0 1 0\n";
-  Matrix *m = read_str(in);
-  CHECK(m != NULL && m->n == 6);
-  if (m == NULL)
+  Matrix m = read_str(in);
+  CHECK(m.n == 6);
+  if (m.data == NULL)
       return;
 
   CHECK(MAT(m, 0, 1) == 2);
@@ -42,28 +44,28 @@ static void test_assignment_example(void) {
 }
 
 static void test_tiny_sizes(void) {
-  Matrix *m1 = read_str("1\n0\n");
-  CHECK(m1 != NULL && m1->n == 1 && MAT(m1, 0, 0) == 0);
+  Matrix m1 = read_str("1\n0\n");
+  CHECK(m1.n == 1 && MAT(m1, 0, 0) == 0);
   matrix_free(m1);
 
-  Matrix *m2 = read_str("2\n0 3\n4 0\n");
-  CHECK(m2 != NULL && MAT(m2, 0, 1) == 3 && MAT(m2, 1, 0) == 4);
+  Matrix m2 = read_str("2\n0 3\n4 0\n");
+  CHECK(m2.n == 2 && MAT(m2, 0, 1) == 3 && MAT(m2, 1, 0) == 4);
   matrix_free(m2);
 }
 
 static void test_diagonal_forced_to_zero(void) {
-  Matrix *m = read_str("2\n5 1\n1 9\n");
-  CHECK(m != NULL);
-  if (m == NULL)
+  Matrix m = read_str("2\n5 1\n1 9\n");
+  CHECK(m.data != NULL);
+  if (m.data == NULL)
       return;
   CHECK(MAT(m, 0, 0) == 0 && MAT(m, 1, 1) == 0);
   matrix_free(m);
 }
 
 static void test_no_edges_prints_zeros(void) {
-  Matrix *m = read_str("3\n0 0 0\n0 0 0\n0 0 0\n");
-  CHECK(m != NULL);
-  if (m == NULL)
+  Matrix m = read_str("3\n0 0 0\n0 0 0\n0 0 0\n");
+  CHECK(m.data != NULL);
+  if (m.data == NULL)
       return;
   CHECK(MAT(m, 0, 1) == INF);
 
@@ -74,7 +76,7 @@ static void test_no_edges_prints_zeros(void) {
 }
 
 static void test_print_inf_as_zero(void) {
-  Matrix *m = matrix_create(2, INF);
+  Matrix m = matrix_create(2, INF);
   MAT(m, 0, 0) = 0;
   MAT(m, 1, 1) = 0;
   MAT(m, 0, 1) = 5;
@@ -85,11 +87,11 @@ static void test_print_inf_as_zero(void) {
 }
 
 static void test_malformed_input(void) {
-  CHECK(read_str("") == NULL);
-  CHECK(read_str("abc\n") == NULL);
-  CHECK(read_str("0\n") == NULL);
-  CHECK(read_str("3\n0 1 2\n") == NULL);
-  CHECK(read_str("2\n0 1\n2") == NULL);
+  CHECK(read_str("").data == NULL);
+  CHECK(read_str("abc\n").data == NULL);
+  CHECK(read_str("0\n").data == NULL);
+  CHECK(read_str("3\n0 1 2\n").data == NULL);
+  CHECK(read_str("2\n0 1\n2").data == NULL);
 }
 
 int main(void) {

@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MIN(a, b) (a <= b ? a : b)
+#define MIN(a, b)    (a <= b ? a : b)
 
 #define INF          ((u32)(UINT32_MAX / 2))
 #define MAT(m, i, j) ((m).data[(i) * (m).n + (j)]) 

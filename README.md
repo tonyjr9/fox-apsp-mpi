@@ -1,8 +1,8 @@
 # fox-apsp-mpi
 
-All-pairs shortest path (APSP) solver for directed weighted graphs, parallelised
-with MPI. Distances are computed by min-plus repeated squaring, and every matrix
-product is distributed with Fox's algorithm on a Q x Q process grid.
+All-pairs shortest path (APSP) solver for directed weighted graphs. The current
+sequential baseline computes distances with min-plus repeated squaring; the MPI
+version will distribute the products with Fox's algorithm.
 
 Project Assignment I, Parallel Computing (2026/27), University of Porto.
 
@@ -17,12 +17,10 @@ Project Assignment I, Parallel Computing (2026/27), University of Porto.
    the diagonal is stored as 0.
 2. Set D = W and m = 1. While m < N-1: D = D (x) D, m = 2m.
    (x) is the min-plus product: C[i][j] = min over k of (A[i][k] + B[k][j]).
-3. Fox's algorithm computes each product. With P = Q*Q processes, each owns one
-   (N/Q) x (N/Q) block. In stage s, the process in column (i+s) mod Q of grid
-   row i broadcasts its A block along the row, every process multiplies it with
-   its current B block (min-plus, accumulating into C), and B blocks shift up
-   one row of the grid.
-4. Print the result. INF (unreachable) is printed as 0.
+3. The sequential version repeats the min-plus product until the covered path
+   length is at least N-1.
+4. The MPI version will apply Fox's algorithm to each product. INF
+   (unreachable) is printed as 0.
 
 Constraint: P = Q*Q and N mod Q = 0. Otherwise the program prints an error and
 aborts without writing to stdout.
@@ -34,7 +32,7 @@ aborts without writing to stdout.
 ├── Makefile
 ├── README.md
 ├── src/
-│   └── main.c            # entry point (built twice: MPI and sequential)
+│   └── main.c            # current sequential stdin/stdout entry point
 ├── lib/
 │   ├── common/           # shared, no MPI
 │   │   ├── matrix.[ch]       # Matrix struct, create/free/copy/equal
@@ -44,7 +42,7 @@ aborts without writing to stdout.
 │   ├── seq/              # sequential repeated squaring (baseline)
 │   │   └── apsp_seq.[ch]
 │   └── mpi/              # distributed version
-│       └── fox.c             # grid setup, scatter/gather, Fox stages
+│       └── fox.c             # MPI grid and Fox implementation
 ├── tests/
 │   ├── test_util.h       # CHECK() macro and helpers
 │   ├── test_matrix.c
@@ -64,47 +62,47 @@ aborts without writing to stdout.
 ## Build
 
 ```
-make            # builds ./fox (MPI) and ./seq (sequential baseline)
+make            # currently builds ./seq
+make seq        # builds ./seq
 make clean
 ```
 
-Requires `gcc` and an MPI implementation providing `mpicc` (Open MPI or MPICH).
-`src/main.c` is compiled with `-DUSE_MPI` for `fox` and without it for `seq`.
+The current sequential build requires `gcc`. The MPI build will require an
+implementation providing `mpicc` (Open MPI or MPICH).
 
 ## Run
 
 Input is read from stdin and the result is written to stdout:
 
 ```
-mpirun -np 4 ./fox < tests/examples/input/input6
 ./seq < tests/examples/input/input6
 ```
 
-Invalid combinations (for example `input6` with 16 processes) print an error
-on stderr and exit with a non-zero status.
+MPI compatibility checks and invalid process-count handling will be added with
+the Fox implementation.
 
 ## Tests
 
 ```
 make test                     # unit tests: matrix, matrix_io, minplus
-make check                    # build, then compare against tests/examples
-MAXN=600 PROCS="1 4" tests/run_tests.sh      # quick subset
+make check-seq                # compare ./seq with tests/examples
+make check                    # unit tests plus sequential regression
+make time-seq INPUT=tests/examples/input/input600
 ```
 
-`tests/run_tests.sh` runs `seq` and `fox` on every input, checks the output byte
-by byte against `tests/examples/output/`, and checks that invalid process counts
-are rejected. Set `MPIRUN` to change the launcher (default
-`mpirun --oversubscribe`).
+`tests/run_tests.sh` currently runs `seq` against the provided expected outputs
+for `input6`, `input300`, `input600`, `input900`, and `input1200`. `input5` is
+reserved for MPI compatibility testing because its dimension is incompatible
+with the required square process grids. Outputs are compared byte by byte.
 
 ## Benchmarks
 
 ```
-bench/run_bench.sh            # P = 1, 4, 9, 16, 25 -> bench/results.csv
+bench/run_test_time.sh        # current sequential timing helper
 ```
 
-Times are in milliseconds and exclude I/O: `MPI_Wtime` around the compute phase
-only, maximum over ranks, reported on stderr. Run on the LabCC machines, not on
-an oversubscribed laptop, when producing numbers for the report.
+The final benchmark will measure computation-only times for sequential,
+one-process MPI, and 4, 9, 16, and 25 MPI processes on the LabCC cluster.
 
 ## Report
 
@@ -113,11 +111,12 @@ an oversubscribed laptop, when producing numbers for the report.
 ## Status
 
 - [x] Matrix struct, I/O and unit tests
-- [ ] Min-plus kernel
-- [ ] Sequential baseline
+- [x] Min-plus kernel
+- [x] Sequential baseline
+- [x] Sequential regression against professor examples
 - [ ] Input validation and process grid
 - [ ] Scatter / gather
 - [ ] Fox's algorithm
-- [ ] All example tests passing
+- [ ] MPI example and invalid-configuration tests
 - [ ] Benchmarks
 - [ ] Report

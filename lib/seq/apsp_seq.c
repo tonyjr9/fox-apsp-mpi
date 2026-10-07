@@ -1,6 +1,7 @@
 #include "apsp_seq.h"
+#include "minplus.h"
 
-Matrix apsp(Matrix m) {
+Matrix floyd_warshall(Matrix m) {
   u32 n = m.n;
   Matrix r = matrix_copy(m);
 
@@ -15,3 +16,5 @@ Matrix apsp(Matrix m) {
 
   return r;
 }
+
+Matrix apsp(Matrix m) { return minplus_apsp(m); }

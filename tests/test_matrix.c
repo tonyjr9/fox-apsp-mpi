@@ -2,22 +2,22 @@
 #include "test_util.h"
 
 static void test_create_and_access(void) {
-  Matrix *m = matrix_create(3, INF);
-  CHECK(m != NULL && m->n == 3);
+  Matrix m = matrix_create(3, INF);
+  CHECK(m.n == 3);
   for (uint32_t i = 0; i < 3; i++)
       for (uint32_t j = 0; j < 3; j++)
           CHECK(MAT(m, i, j) == INF);
 
   MAT(m, 1, 2) = 42;
   CHECK(MAT(m, 1, 2) == 42);
-  CHECK(m->data[1 * 3 + 2] == 42);
+  CHECK(m.data[1 * 3 + 2] == 42);
   matrix_free(m);
 }
 
 static void test_copy_is_deep(void) {
-  Matrix *a = matrix_create(2, 7);
-  Matrix *b = matrix_copy(a);
-  CHECK(b != a && b->data != a->data);
+  Matrix a = matrix_create(2, 7);
+  Matrix b = matrix_copy(a);
+  CHECK(b.data != a.data);
   CHECK(matrix_equal(a, b));
 
   MAT(b, 0, 1) = 9;
@@ -28,15 +28,15 @@ static void test_copy_is_deep(void) {
 }
 
 static void test_equal_size_mismatch(void) {
-  Matrix *a = matrix_create(2, 0);
-  Matrix *b = matrix_create(3, 0);
+  Matrix a = matrix_create(2, 0);
+  Matrix b = matrix_create(3, 0);
   CHECK(!matrix_equal(a, b));
   matrix_free(a);
   matrix_free(b);
 }
 
 static void test_free_null(void) {
-  matrix_free(NULL);
+  matrix_free(MATRIX_NULL);
   CHECK(1);
 }
 
