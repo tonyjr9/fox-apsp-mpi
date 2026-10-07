@@ -6,6 +6,9 @@
 
 #define MIN(a, b) (a <= b ? a : b)
 
+#define INF          ((u32)(UINT32_MAX / 2))
+#define MAT(m, i, j) ((m).data[(i) * (m).n + (j)]) 
+
 typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;

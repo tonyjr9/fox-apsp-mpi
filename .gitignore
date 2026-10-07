@@ -1,1 +1,4 @@
-test_io
+build*
+test_io*
+seq
+fox

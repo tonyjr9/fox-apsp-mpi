@@ -3,12 +3,9 @@
 
 #include "utils.h"
 
-#define INF          ((u32)(UINT32_MAX / 2))
-#define MAT(m, i, j) ((m).data[(i) * (m).n + (j)]) 
-
 typedef struct matrix Matrix;
 
-#define MATRIX_NULL { .n = 0, .data = NULL }
+#define MATRIX_NULL (Matrix){ .n = 0, .data = NULL }
 
 struct matrix {
   u32  n;

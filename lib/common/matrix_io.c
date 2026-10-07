@@ -6,7 +6,7 @@ Matrix matrix_read(FILE *in) {
   u32 n;
   if (fscanf(in, "%" SCNu32, &n) != 1 || n == 0) {
     fprintf(stderr, "matrix_read: missing or invalid dimension N\n");
-    return NULL;
+    return MATRIX_NULL;
   }
 
   Matrix m = matrix_create(n, INF);
@@ -23,7 +23,7 @@ Matrix matrix_read(FILE *in) {
           n, n, i, j
         );
         matrix_free(m);
-        return NULL;
+        return MATRIX_NULL;
       }
 
       if (i == j)
@@ -37,15 +37,15 @@ Matrix matrix_read(FILE *in) {
 }
 
 void matrix_print(FILE *out, const Matrix m) {
-  for (u32 i = 0; i < m->n; i++) {
-    for (u32 j = 0; j < m->n; j++) {
+  for (u32 i = 0; i < m.n; i++) {
+    for (u32 j = 0; j < m.n; j++) {
       u32 v = MAT(m, i, j);
       if (v == INF)
         v = 0;
 
       fprintf(
         out, 
-        j + 1 < m->n ? "%" PRIu32 " " : "%" PRIu32, 
+        j + 1 < m.n ? "%" PRIu32 " " : "%" PRIu32, 
         v
       );
     }
