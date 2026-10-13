@@ -3,7 +3,7 @@
 #include <math.h>
 #include <mpi.h>
 
-bool validate(u32 n, u16 p)
+bool fox_validate(u32 n, u16 p)
 {
   f32 q = sqrt(p);
   if (floorf(q) != q)
@@ -22,7 +22,7 @@ bool validate(u32 n, u16 p)
 }
 
 // https://www.dcc.fc.up.pt/~ricroc/aulas/1011/ppd/apontamentos/guide_mpi.pdf
-void setup(GRID* g)
+void fox_setup_grid(GRID* g)
 {
   int old_rank;
   int dims[2]    = { 0, 0 };
@@ -33,7 +33,7 @@ void setup(GRID* g)
   MPI_Comm_size(MPI_COMM_WORLD, &g->p);
   MPI_Comm_rank(MPI_COMM_WORLD, &old_rank);
 
-  g->q = (u16)sqrt((double)g->p);
+  g->q    = (u16)sqrt((double)g->p);
   dims[0] = dims[1] = g->q;
  
   // q x q periodic grid
