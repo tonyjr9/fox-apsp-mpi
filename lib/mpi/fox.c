@@ -52,3 +52,52 @@ void fox_setup_grid(GRID* g)
   free_coords[0] = 1; free_coords[1] = 0;
   MPI_Cart_sub(g->comm, free_coords, &g->col_comm);
 }
+
+void fox(const GRID* grid,
+         const Matrix local_A,
+         Matrix local_B,
+         Matrix local_C) {
+  Matrix temp_A;
+  i32 step, bcast_root, source, dest;
+  const u32 n_bar = local_A.n;
+  const int block_elements = (int)((u64)n_bar * n_bar);
+  const int tag = 69;
+
+  /* Calculate ranks for the circular shift of B. */
+  source = (grid->my_row + 1) % grid->q;
+  dest   = (grid->my_row + grid->q - 1) % grid->q;
+
+  /* Reuse this storage for broadcasts from other columns. */
+  temp_A = matrix_create(n_bar, 0);
+
+  for (step = 0; step < grid->q; step++) {
+    bcast_root = (grid->my_row + step) % grid->q;
+
+    if (bcast_root == grid->my_col) {
+      MPI_Bcast(
+        local_A.data, 
+        block_elements, 
+        MPI_UINT32_T,
+        bcast_root, 
+        grid->row_comm);
+      minplus_accumulate(local_C, local_A, local_B);
+    } else {
+      MPI_Bcast(
+        temp_A.data, 
+        block_elements, 
+        MPI_UINT32_T,
+        bcast_root, 
+        grid->row_comm);
+      minplus_accumulate(local_C, temp_A, local_B);
+    }
+    MPI_Sendrecv_replace(
+      local_B.data, 
+      block_elements, 
+      MPI_UINT32_T,
+      dest, tag, source, tag, 
+      grid->col_comm,
+      MPI_STATUS_IGNORE);
+  }
+
+  matrix_free(temp_A);
+}
