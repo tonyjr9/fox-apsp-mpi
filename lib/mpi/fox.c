@@ -22,7 +22,7 @@ bool fox_validate(u32 n, u16 p)
 }
 
 // https://www.dcc.fc.up.pt/~ricroc/aulas/1011/ppd/apontamentos/guide_mpi.pdf
-void fox_setup_grid(GRID* g)
+void fox_setup_grid(GridData* g)
 {
   int old_rank;
   int dims[2]    = { 0, 0 };
@@ -53,18 +53,20 @@ void fox_setup_grid(GRID* g)
   MPI_Cart_sub(g->comm, free_coords, &g->col_comm);
 }
 
-void fox(const GRID* grid,
+void fox(i32 n,
+         const GridData* grid,
+         Matrix local_C,
          const Matrix local_A,
-         Matrix local_B,
-         Matrix local_C) {
+         Matrix local_B)
+{
   Matrix temp_A;
   i32 step, bcast_root, source, dest;
-  const u32 n_bar = local_A.n;
+  const u32 n_bar = n/grid->q;
   const int block_elements = (int)((u64)n_bar * n_bar);
   const int tag = 69;
 
   /* Calculate ranks for the circular shift of B. */
-  source = (grid->my_row + 1) % grid->q;
+  source = (grid->my_row + 1)           % grid->q;
   dest   = (grid->my_row + grid->q - 1) % grid->q;
 
   /* Reuse this storage for broadcasts from other columns. */

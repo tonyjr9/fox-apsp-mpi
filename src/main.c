@@ -9,7 +9,7 @@ int main(void) {
   if (m.data == NULL)
     return 1;
 
-  Grid g;
+  GridData grid;
   fox_setup_grid(&g);
 
   Matrix r = matrix_copy(m);

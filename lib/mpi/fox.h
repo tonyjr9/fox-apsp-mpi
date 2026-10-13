@@ -20,7 +20,7 @@ typedef struct {
     my_row,
     my_col;
 
-} GRID;
+} GridData;
 
 
 /*
@@ -30,9 +30,10 @@ typedef struct {
 */
 bool fox_validate(u32 n, u16 p);
 
-void fox_setup_grid(GRID* g);
+void fox_setup_grid(GridData* g);
 
-void fox(const GRID* g,
-         const Matrix local_A, Matrix local_B, Matrix local_C);
+void fox(i32 n,
+         const GridData* g,
+         Matrix local_C, const Matrix local_A, Matrix local_B);
 
 #endif
