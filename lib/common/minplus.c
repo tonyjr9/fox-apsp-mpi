@@ -23,11 +23,11 @@ void minplus_accumulate(const Matrix c, const Matrix a, const Matrix b) {
     const u32* restrict read_a = &a.data[i * n];   // row i of a
 
     // Row i starts as unreachable
-    for (
-      u32 j = 0;
-      j < n;
-      out[j++] = INF
-    );
+    //for (
+    //  u32 j = 0;
+    //  j < n;
+    //  out[j++] = INF
+    //);
 
     // Relax row i of c through each intermediate k:
     // c[i][j] = min(c[i][j], a[i][k] + b[k][j])
@@ -39,9 +39,10 @@ void minplus_accumulate(const Matrix c, const Matrix a, const Matrix b) {
       const u32* restrict read_b = &b.data[k * n];  // row k of b
 
       for (u32 j = 0; j < n; j++) {
-        const u32 
-          right = read_b[j],
-          candidate = left + right;
+        const u32 right = read_b[j];
+        if (right >= INF)
+          continue;
+        const u32 candidate = left + right;
 
         out[j] = MIN(candidate, out[j]);
         // MIN(a, b) is defined as (a <= b ? a : b)

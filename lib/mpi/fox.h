@@ -26,9 +26,11 @@ typedef struct {
 /*
  * Validate input according to Fox's rules:
  * - Number os processses must be a perfect square;
- * - Sqrt(#processes) must divide matrix size
+ * - Sqrt(#processes) must divide matrix size;
+ *
+ * Only prints error if run by ROOT process.
 */
-bool fox_validate(u32 n, u16 p);
+bool fox_validate(u32 n, u16 p, int rank);
 
 void fox_setup_grid(GridData* g);
 

@@ -40,8 +40,6 @@ void matrix_print(FILE *out, const Matrix m) {
   for (u32 i = 0; i < m.n; i++) {
     for (u32 j = 0; j < m.n; j++) {
       u32 v = MAT(m, i, j);
-      if (v == INF)
-        v = 0;
 
       fprintf(
         out, 

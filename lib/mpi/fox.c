@@ -3,18 +3,18 @@
 #include <math.h>
 #include <mpi.h>
 
-bool fox_validate(u32 n, u16 p)
+bool fox_validate(u32 n, u16 p, int rank)
 {
   f32 q = sqrt(p);
   if (floorf(q) != q)
   {
-    fprintf(stderr, "[ERROR]: number of processes must be a perfect square.\n");
+    if (rank == 0) fprintf(stderr, "[ERROR]: number of processes must be a perfect square.\n");
     return false;
   }
 
   if (n%(u32)q != 0)
   {
-    fprintf(stderr, "[ERROR]: matrix size isn't divisible by sqrt(#processes).\n");
+    if (rank == 0) fprintf(stderr, "[ERROR]: matrix size isn't divisible by sqrt(#processes).\n");
     return false;
   }
 
@@ -61,8 +61,8 @@ void fox(i32 n,
 {
   Matrix temp_A;
   i32 step, bcast_root, source, dest;
-  const u32 n_bar = n/grid->q;
-  const int block_elements = (int)((u64)n_bar * n_bar);
+  const u32 n_local = n/grid->q;
+  const int block_elements = (int)((u64)n_local * n_local);
   const int tag = 69;
 
   /* Calculate ranks for the circular shift of B. */
@@ -70,7 +70,7 @@ void fox(i32 n,
   dest   = (grid->my_row + grid->q - 1) % grid->q;
 
   /* Reuse this storage for broadcasts from other columns. */
-  temp_A = matrix_create(n_bar, 0);
+  temp_A = matrix_create(n_local, 0);
 
   for (step = 0; step < grid->q; step++) {
     bcast_root = (grid->my_row + step) % grid->q;
