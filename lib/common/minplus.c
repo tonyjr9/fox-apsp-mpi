@@ -40,8 +40,6 @@ void minplus_accumulate(const Matrix c, const Matrix a, const Matrix b) {
 
       for (u32 j = 0; j < n; j++) {
         const u32 right = read_b[j];
-        if (right >= INF)
-          continue;
         const u32 candidate = left + right;
 
         out[j] = MIN(candidate, out[j]);

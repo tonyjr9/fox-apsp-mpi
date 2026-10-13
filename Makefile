@@ -1,6 +1,6 @@
 CC       ?= gcc
 MPICC    ?= mpicc
-CFLAGS   ?= -O3 -Wall -lm -Wextra -std=c11
+CFLAGS   ?= -O3 -Wall -lm -Wextra -std=c11 -march=native
 CPPFLAGS += -Ilib/common -Ilib/seq -Ilib/mpi -MMD -MP
 
 BUILD := build

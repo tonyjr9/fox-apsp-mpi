@@ -135,7 +135,7 @@ int main(void){
   if (m.data == NULL)
     return 1;
 
-  Matrix r = apsp(m);
+  Matrix r = floyd_warshall(m);
 
   matrix_print(stdout, r);
   

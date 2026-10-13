@@ -3,3 +3,4 @@ test_io*
 seq
 fox
 compile_commands.json
+matgen
