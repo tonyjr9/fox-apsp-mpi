@@ -87,7 +87,7 @@ static void test_accumulate_keeps_existing_minimum(void) {
   Matrix a = mat_from(4, W);
   Matrix c = matrix_create(4, 1);
 
-  minplus_accumulate(c, a, a);
+  minplus_relax(c, a, a);
 
   CHECK(MAT(c, 0, 0) == 0);
   CHECK(MAT(c, 0, 1) == 1);
@@ -115,8 +115,8 @@ static void test_accumulate_over_two_halves(void) {
     }
   }
 
-  minplus_accumulate(c, left, top);
-  minplus_accumulate(c, right, bottom);
+  minplus_relax(c, left, top);
+  minplus_relax(c, right, bottom);
   CHECK(matrix_equal(c, expected));
 
   matrix_free(w);

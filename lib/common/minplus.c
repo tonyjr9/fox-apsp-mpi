@@ -1,10 +1,34 @@
 #include "minplus.h"
 
+void minplus_matrix_reset(Matrix c) {
+  for (u32 i = 0; i < c.n * c.n; i++) {
+    c.data[i] = INF;
+  }
+}
+
+Matrix minplus_multiply(const Matrix a, const Matrix b) {
+  if (a.n != b.n)
+    return MATRIX_NULL;
+
+  Matrix c = matrix_create(a.n, 0);
+  minplus_multiply_into(c, a, b);
+  return c;
+}
+
+void minplus_multiply_into(
+  Matrix c,
+  const Matrix a,
+  const Matrix b) {
+
+  minplus_matrix_reset(c);
+  minplus_relax(c, a, b);
+}
+
 /*
  * Min-plus product: c[i][j] = min over k of (a[i][k] + b[k][j]).
  * Overwrites c, which must not share memory with a or b.
  */
-void minplus_accumulate(const Matrix c, const Matrix a, const Matrix b) {
+void minplus_relax(const Matrix c, const Matrix a, const Matrix b) {
   if (c.n != a.n || a.n != b.n)
     return;
 
@@ -57,7 +81,7 @@ void minplus_accumulate(const Matrix c, const Matrix a, const Matrix b) {
 Matrix minplus_apsp(const Matrix m) {
   Matrix 
     d    = matrix_copy(m),
-    next = matrix_create(m.n, 0);
+    next = matrix_create(m.n, INF);
 
   if (d.data == NULL || next.data == NULL) {
     matrix_free(d);
@@ -70,7 +94,7 @@ Matrix minplus_apsp(const Matrix m) {
     covered + 1 < d.n; // d.n is unsigned and for n == 0, it would cause an underflow
     covered <<= 1
   ) {
-    minplus_accumulate(next, d, d);
+    minplus_multiply_into(next, d, d);
 
     u32* temp = next.data;
     next.data = d.data;

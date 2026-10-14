@@ -24,6 +24,14 @@ Matrix matrix_create(const u32 n, const u32 fill) {
   return m;
 }
 
+void matrix_copy_into(Matrix dst, const Matrix src) {
+  if (dst.n != src.n || dst.data == NULL || src.data == NULL)
+    return;
+
+  if (dst.data != src.data)
+    memcpy(dst.data, src.data, (u64)dst.n * dst.n * sizeof(u32));
+}
+
 void matrix_free(Matrix m) {
   if (m.data != NULL)
     free(m.data);
