@@ -58,16 +58,16 @@ static void test_identity(void) {
     X, X, 0, X,
     X, X, X, 0
   };
-  Matrix w = mat_from(4, W);
-  Matrix i = mat_from(4, identity);
-  Matrix left = minplus_multiply(w, i);
-  Matrix right = minplus_multiply(i, w);
+  Matrix w     = mat_from(4, W);
+  Matrix id    = mat_from(4, identity);
+  Matrix left  = minplus_multiply(w, id);
+  Matrix right = minplus_multiply(id, w);
 
   CHECK(matrix_equal(left, w));
   CHECK(matrix_equal(right, w));
 
   matrix_free(w);
-  matrix_free(i);
+  matrix_free(id);
   matrix_free(left);
   matrix_free(right);
 }
@@ -83,7 +83,7 @@ static void test_all_inf_no_overflow(void) {
   matrix_free(c);
 }
 
-static void test_accumulate_keeps_existing_minimum(void) {
+static void test_relax_keeps_existing_minimum(void) {
   Matrix a = mat_from(4, W);
   Matrix c = matrix_create(4, 1);
 
@@ -97,7 +97,7 @@ static void test_accumulate_keeps_existing_minimum(void) {
   matrix_free(c);
 }
 
-static void test_accumulate_over_two_halves(void) {
+static void test_relax_over_two_halves(void) {
   Matrix w = mat_from(4, W);
   Matrix expected = minplus_multiply(w, w);
   Matrix left = matrix_create(4, X);
@@ -132,7 +132,7 @@ int main(void) {
   test_assignment_squaring();
   test_identity();
   test_all_inf_no_overflow();
-  test_accumulate_keeps_existing_minimum();
-  test_accumulate_over_two_halves();
+  test_relax_keeps_existing_minimum();
+  test_relax_over_two_halves();
   return test_report("test_minplus");
 }

@@ -1,8 +1,8 @@
 #include "imports.h"
-#include <mpi.h>
 #include <string.h>
 
 #ifdef USE_MPI
+#include <mpi.h>
 
 #include "fox.h"
 
@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
 
   Matrix input = MATRIX_NULL;
   
-  GridData grid;
+  FoxGrid grid;
 
 
   MPI_Init(&argc, &argv);

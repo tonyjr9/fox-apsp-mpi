@@ -4,7 +4,7 @@
 #include <string.h>
 #include <mpi.h>
 
-void fox_grid_free(GridData* g){
+void fox_grid_free(FoxGrid* g){
   MPI_Comm_free(&g->row_comm);
   MPI_Comm_free(&g->col_comm);
   MPI_Comm_free(&g->comm);
@@ -28,7 +28,7 @@ bool fox_validate(u32 n, u16 p, int rank) {
 }
 
 // https://www.dcc.fc.up.pt/~ricroc/aulas/1011/ppd/apontamentos/guide_mpi.pdf
-void fox_setup_grid(GridData* g) {
+void fox_setup_grid(FoxGrid* g) {
   int old_rank;
   int dims[2]    = { 0, 0 };
   int periods[2] = { 1, 1 };      // wrap-around in both dimensions
@@ -58,9 +58,9 @@ void fox_setup_grid(GridData* g) {
   MPI_Cart_sub(g->comm, free_coords, &g->col_comm);
 }
 
-void fox(
+void fox_multiply(
   i32 n,
-  const GridData* grid,
+  const FoxGrid* grid,
   Matrix local_C,
   const Matrix local_A,
   Matrix local_B,
@@ -105,7 +105,7 @@ void fox(
 }
 
 void fox_scatter(
-  const GridData* grid,
+  const FoxGrid* grid,
   const Matrix global,
   u32 n,
   Matrix A) {
@@ -166,7 +166,7 @@ void fox_scatter(
 }
 
 Matrix fox_gather(
-    const GridData* grid,
+    const FoxGrid* grid,
     Matrix global,
     u32 n,
     Matrix A) {
@@ -213,7 +213,7 @@ Matrix fox_gather(
   return MATRIX_NULL;
 }
  
-Matrix mpi_apsp(const GridData* grid, Matrix input, u32 n) {
+Matrix mpi_apsp(const FoxGrid* grid, Matrix input, u32 n) {
   const u32 n_local = (u32)(n/grid->q);
   Matrix A          = matrix_create(n_local, 0);
   Matrix B          = matrix_create(n_local, 0);
@@ -228,7 +228,7 @@ Matrix mpi_apsp(const GridData* grid, Matrix input, u32 n) {
   matrix_copy_into(B, A);
 
   for (u32 step = 1; step + 1 < n; step <<= 1) {
-    fox((i32)n, grid, C, A, B, &workspace);
+    fox_multiply((i32)n, grid, C, A, B, &workspace);
     matrix_copy_into(A, C);
     matrix_copy_into(B, A);
   }

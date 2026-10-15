@@ -5,29 +5,31 @@
 
 #include "imports.h"
 
-typedef struct {
-  MPI_Comm 
+typedef struct fox_grid FoxGrid;
+
+struct fox_grid {
+  MPI_Comm
     comm,     // global comm
     row_comm,
     col_comm;
 
-  i32 
-    p,       // #processes
-    my_rank; // global comm rank
+  i32
+    p,        // #processes
+    my_rank;  // global comm rank
 
-  u16 
-    q,       // q * q = processors
+  u16
+    q,        // q * q = processors
     my_row,
     my_col;
+};
 
-} GridData;
+typedef struct fox_workspace FoxWorkspace;
 
+struct fox_workspace {
+  Matrix broadcast_A;
+};
 
-typedef struct {
-    Matrix broadcast_A;
-} FoxWorkspace;
-
-void fox_grid_free(GridData* g);
+void   fox_grid_free   (FoxGrid* g);
 /*
  * Validate input according to Fox's rules:
  * - Number os processses must be a perfect square;
@@ -35,35 +37,14 @@ void fox_grid_free(GridData* g);
  *
  * Only prints error if run by ROOT process.
 */
-bool   fox_validate(u32 n, u16 p, int rank);
-void   fox_setup_grid(GridData* g);
+bool   fox_validate    (u32 n, u16 p, int rank);
+void   fox_setup_grid  (FoxGrid* g);
 
-void   fox_scatter(
-  const GridData* grid, 
-  const Matrix global, 
-  u32 n,
-  Matrix A
-);
-
-Matrix fox_gather(
-  const GridData* grid, 
-  Matrix global, 
-  u32 n,
-  Matrix A
-);
-
-Matrix mpi_apsp(
-  const GridData* grid, 
-  Matrix input,
-  u32 n
-);
-
-void fox(
-  i32 n,
-  const GridData* g,
-  Matrix local_C, 
-  const Matrix local_A, 
-  Matrix local_B,
-  FoxWorkspace* workspace);
+void   fox_scatter     (const FoxGrid* g, const Matrix global, u32 n, Matrix a);
+Matrix fox_gather      (const FoxGrid* g, Matrix global, u32 n, Matrix a);
+Matrix mpi_apsp        (const FoxGrid* g, Matrix input, u32 n);
+void   fox_multiply    (i32 n, const FoxGrid* g, Matrix local_c,
+                        const Matrix local_a, Matrix local_b,
+                        FoxWorkspace* workspace);
 
 #endif

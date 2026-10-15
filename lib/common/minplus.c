@@ -24,11 +24,50 @@ void minplus_multiply_into(
   minplus_relax(c, a, b);
 }
 
+#define BLK 128
+
 /*
  * Min-plus product: c[i][j] = min over k of (a[i][k] + b[k][j]).
  * Overwrites c, which must not share memory with a or b.
  */
-void minplus_relax(const Matrix c, const Matrix a, const Matrix b) {
+void minplus_relax(Matrix c, const Matrix a, const Matrix b) {
+#ifdef BLK
+  if (c.n != a.n || a.n != b.n)
+    return;
+
+  const u32 n = c.n;
+
+  for (u32 ii = 0; ii < n; ii += BLK) {
+    const u32 i_end = MIN(ii + BLK, n);
+
+    for (u32 kk = 0; kk < n; kk += BLK) {
+      const u32 k_end = MIN(kk + BLK, n);
+
+      for (u32 jj = 0; jj < n; jj += BLK) {
+        const u32 j_end = MIN(jj + BLK, n);
+
+        for (u32 i = ii; i < i_end; i++) {
+          u32*       restrict out    = &c.data[i * n];
+          const u32* restrict read_a = &a.data[i * n];
+
+          for (u32 k = kk; k < k_end; k++) {
+            const u32 left = read_a[k];
+            if (left >= INF)
+              continue;
+
+            const u32* restrict read_b = &b.data[k * n];
+
+            for (u32 j = jj; j < j_end; j++) {
+              const u32 candidate = left + read_b[j];
+              out[j] = MIN(candidate, out[j]);
+            }
+          }
+        }
+      }
+    }
+  }
+
+#else
   if (c.n != a.n || a.n != b.n)
     return;
 
@@ -76,6 +115,8 @@ void minplus_relax(const Matrix c, const Matrix a, const Matrix b) {
       }
     }
   }
+
+#endif
 }
 
 Matrix minplus_apsp(const Matrix m) {

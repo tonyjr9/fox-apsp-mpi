@@ -20,7 +20,7 @@ TEST_BIN := $(addprefix $(BUILD)/tests/,$(TESTS))
 all: seq
 
 fox: $(FOX_OBJ) $(COMMON_OBJ)
-	$(MPICC) $(CFLAGS) -o $@ $^
+	$(MPICC) $(CFLAGS) -o $@ $^ -lm
 
 seq: $(SEQ_OBJ) $(COMMON_OBJ)
 	$(CC) $(CFLAGS) -o $@ $^
