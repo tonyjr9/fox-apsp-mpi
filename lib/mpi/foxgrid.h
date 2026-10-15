@@ -1,6 +1,15 @@
+#ifndef FOX_GRID_H
+#define FOX_GRID_H
+
 #include <mpi.h>
 
 #include "imports.h"
+
+typedef struct fox_workspace FoxWorkspace;
+
+struct fox_workspace {
+  Matrix broadcast_A;
+};
 
 typedef struct fox_grid FoxGrid;
 
@@ -21,3 +30,5 @@ struct fox_grid {
 };
 
 void   fox_setup_grid  (FoxGrid* g);
+
+#endif

@@ -1,6 +1,7 @@
 #include "fox.h"
 
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 #include <mpi.h>
 
@@ -73,6 +74,11 @@ void fox_multiply(
 
 }
 
+/*
+ * Distribute the N x N global matrix (root holds it) as contiguous
+ * n_local x n_local blocks to every rank in MPI_COMM_WORLD.
+ * Rank r receives grid block (r/q, r%q) packed row-major.
+ */
 void fox_scatter(
   const FoxGrid* grid,
   const Matrix global,
@@ -81,41 +87,41 @@ void fox_scatter(
 
   const u32 n_local = (u32)(n/grid->q);
   const u32 count = n_local * n_local;
-  minplus_matrix_reset(A);
   int my_rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
   if (my_rank == 0) {
-    int dest = 0;
-    Matrix tmp = matrix_create(n_local, 0);
-    for (int row = 0; row != grid->q; ++row) {
-      for (int col = 0; col != grid->q; ++col) {
-
-        // Copy block (row, col) of the input matrix into tmp
-        for (int i = 0; i != (int)n_local; ++i) {
-          for (int j = 0; j != (int)n_local; ++j) {
-            tmp.data[i * n_local + j] =
-                global.data[(row * n_local + i) * n + (col * n_local + j)];
-          }
+    u32* sendbuf = malloc((size_t)grid->p * count * sizeof(u32));
+    if (sendbuf == NULL) {
+      fprintf(stderr, "fox_scatter: out of memory\n");
+      MPI_Abort(MPI_COMM_WORLD, 1);
+    }
+    for (u32 r = 0; r < (u32)grid->p; r++) {
+      const u32 row = r / grid->q;
+      const u32 col = r % grid->q;
+      u32* dst = &sendbuf[r * count];
+      for (u32 i = 0; i < n_local; i++) {
+        for (u32 j = 0; j < n_local; j++) {
+          dst[i * n_local + j] =
+              global.data[(row * n_local + i) * n + (col * n_local + j)];
         }
-
-        if (dest == 0) {
-          // MPI_Send to self would deadlock
-          memcpy(A.data, tmp.data, (size_t)count * sizeof(u32));
-        } else { 
-          MPI_Send(tmp.data, (int)count, MPI_UINT32_T,
-                   dest, 0, MPI_COMM_WORLD);
-        }
-        ++dest;
       }
     }
-    matrix_free(tmp);
+    MPI_Scatter(sendbuf, (int)count, MPI_UINT32_T,
+                A.data, (int)count, MPI_UINT32_T,
+                0, MPI_COMM_WORLD);
+    free(sendbuf);
   } else {
-    MPI_Recv(A.data, (int)count, MPI_UINT32_T,
-             0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Scatter(NULL, 0, MPI_DATATYPE_NULL,
+                A.data, (int)count, MPI_UINT32_T,
+                0, MPI_COMM_WORLD);
   }
 }
 
+/*
+ * Gather contiguous n_local x n_local blocks from every rank and write them
+ * back into the N x N global matrix on root. Rank r holds grid block (r/q, r%q).
+ */
 Matrix fox_gather(
     const FoxGrid* grid,
     Matrix global,
@@ -128,40 +134,33 @@ Matrix fox_gather(
   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
   if (my_rank == 0) {
-    Matrix tmp = matrix_create(n_local, 0);
-    int src = 0;
+    u32* recvbuf = malloc((size_t)grid->p * count * sizeof(u32));
+    if (recvbuf == NULL) {
+      fprintf(stderr, "fox_gather: out of memory\n");
+      MPI_Abort(MPI_COMM_WORLD, 1);
+    }
+    MPI_Gather(A.data, (int)count, MPI_UINT32_T,
+               recvbuf, (int)count, MPI_UINT32_T,
+               0, MPI_COMM_WORLD);
 
-    for (int row = 0; row != grid->q; ++row) {
-      for (int col = 0; col != grid->q; ++col) {
-
-        if (src == 0) {
-          memcpy(tmp.data, A.data, (size_t)count * sizeof(u32));
-        } else {
-          MPI_Recv(tmp.data, (int)count, MPI_UINT32_T,
-                    src, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    for (u32 r = 0; r < (u32)grid->p; r++) {
+      const u32 row = r / grid->q;
+      const u32 col = r % grid->q;
+      const u32* src = &recvbuf[r * count];
+      for (u32 i = 0; i < n_local; i++) {
+        for (u32 j = 0; j < n_local; j++) {
+          const u32 v = src[i * n_local + j];
+          global.data[(row * n_local + i) * n + (col * n_local + j)] =
+              (v == INF) ? INF : v;
         }
-        ++src;
-
-        for (int i = 0; i != (int)n_local; ++i) {
-          for (int j = 0; j != (int)n_local; ++j) {
-            int dest = i * n_local + j;
-            global.data[(row * n_local + i) * n + (col * n_local + j)] =
-                  (tmp.data[dest] == INF) ? INF : tmp.data[dest];
-          }
-        }
-
       }
     }
-    
-    // matrix_print(stdout, global);
-
-    matrix_free(tmp);
+    free(recvbuf);
     return global;
   } else {
-    MPI_Send(A.data, (int)count, MPI_UINT32_T,
-              0, 0, MPI_COMM_WORLD);
+    MPI_Gather(A.data, (int)count, MPI_UINT32_T,
+               NULL, 0, MPI_DATATYPE_NULL,
+               0, MPI_COMM_WORLD);
   }
   return MATRIX_NULL;
 }
- 
-#ifndef  

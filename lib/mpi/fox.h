@@ -6,12 +6,6 @@
 #include "imports.h"
 #include "foxgrid.h"
 
-typedef struct fox_workspace FoxWorkspace;
-
-struct fox_workspace {
-  Matrix broadcast_A;
-};
-
 void   fox_grid_free   (FoxGrid* g);
 /*
  * Validate input according to Fox's rules:
@@ -22,6 +16,11 @@ void   fox_grid_free   (FoxGrid* g);
 */
 bool   fox_validate    (u32 n, u16 p, int rank);
 
+/*
+ * Distribute / gather the N x N matrix as contiguous n_local x n_local blocks
+ * across the q x q process grid using MPI_Scatter / MPI_Gather.
+ * Rank r owns grid block (r/q, r%q).
+ */
 void   fox_scatter     (const FoxGrid* g, const Matrix global, u32 n, Matrix a);
 Matrix fox_gather      (const FoxGrid* g, Matrix global, u32 n, Matrix a);
 Matrix mpi_apsp        (const FoxGrid* g, Matrix input, u32 n);

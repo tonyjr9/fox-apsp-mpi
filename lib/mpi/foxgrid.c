@@ -1,4 +1,6 @@
-#include "foxgrid.c"
+#include <math.h>
+
+#include "foxgrid.h"
 
 // https://www.dcc.fc.up.pt/~ricroc/aulas/1011/ppd/apontamentos/guide_mpi.pdf
 void fox_setup_grid(FoxGrid* g) {
@@ -14,8 +16,8 @@ void fox_setup_grid(FoxGrid* g) {
   g->q    = (u16)sqrt((double)g->p);
   dims[0] = dims[1] = g->q;
  
-  // q x q periodic grid
-  MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, 1, &g->comm);
+  // q x q periodic grid (reorder=0 keeps cartesian rank == MPI_COMM_WORLD rank)
+  MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, 0, &g->comm);
  
   MPI_Comm_rank(g->comm, &(g->my_rank));
   MPI_Cart_coords(g->comm, g->my_rank, 2, coords);

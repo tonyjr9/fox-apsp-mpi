@@ -9,7 +9,7 @@ COMMON_SRC := $(wildcard lib/common/*.c)
 COMMON_OBJ := $(COMMON_SRC:%.c=$(BUILD)/%.o)
 
 SEQ_OBJ := $(BUILD)/seq/main.o $(BUILD)/lib/seq/apsp_seq.o
-FOX_OBJ := $(BUILD)/fox/main.o $(BUILD)/lib/mpi/fox.o
+FOX_OBJ := $(BUILD)/fox/main.o $(BUILD)/lib/mpi/fox.o $(BUILD)/lib/mpi/foxgrid.o $(BUILD)/lib/mpi/apsp_mpi.o
 
 TESTS    := test_matrix test_matrix_io test_minplus
 TEST_BIN := $(addprefix $(BUILD)/tests/,$(TESTS))
