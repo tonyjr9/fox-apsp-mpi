@@ -27,37 +27,6 @@ bool fox_validate(u32 n, u16 p, int rank) {
   return true;
 }
 
-// https://www.dcc.fc.up.pt/~ricroc/aulas/1011/ppd/apontamentos/guide_mpi.pdf
-void fox_setup_grid(FoxGrid* g) {
-  int old_rank;
-  int dims[2]    = { 0, 0 };
-  int periods[2] = { 1, 1 };      // wrap-around in both dimensions
-  int coords[2];
-  int free_coords[2];
-
-  MPI_Comm_size(MPI_COMM_WORLD, &g->p);
-  MPI_Comm_rank(MPI_COMM_WORLD, &old_rank);
-
-  g->q    = (u16)sqrt((double)g->p);
-  dims[0] = dims[1] = g->q;
- 
-  // q x q periodic grid
-  MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, 1, &g->comm);
- 
-  MPI_Comm_rank(g->comm, &(g->my_rank));
-  MPI_Cart_coords(g->comm, g->my_rank, 2, coords);
-  g->my_row  = (u16)coords[0];
-  g->my_col  = (u16)coords[1];
- 
-  // row communicator: the second coordinate varies
-  free_coords[0] = 0; free_coords[1] = 1;
-  MPI_Cart_sub(g->comm, free_coords, &g->row_comm);
- 
-  // column communicator: the first coordinate varies
-  free_coords[0] = 1; free_coords[1] = 0;
-  MPI_Cart_sub(g->comm, free_coords, &g->col_comm);
-}
-
 void fox_multiply(
   i32 n,
   const FoxGrid* grid,
@@ -145,24 +114,6 @@ void fox_scatter(
     MPI_Recv(A.data, (int)count, MPI_UINT32_T,
              0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
-
-  // Matrix B = matrix_copy(A);
-  // Matrix C = matrix_create(n_local, INF);
-
-  // APSP by repeated squaring
-  // If n <= 2 no product runs and A is already the answer.
-  //Matrix temp_A = matrix_create(n_local, 0);
-  // u32 step = 1;
-  // while (step < (u32)n - 1) {
-  //  fox(n, grid, C, A, B, workspace);
-  //  memcpy(A.data, C.data, (size_t)count * sizeof(u32));
-  //  memcpy(B.data, C.data, (size_t)count * sizeof(u32));
-
-  //  step *= 2;
-  // }
-  // matrix_free(temp_A);
-  // matrix_free(B);
-  // matrix_free(C);
 }
 
 Matrix fox_gather(
@@ -213,33 +164,4 @@ Matrix fox_gather(
   return MATRIX_NULL;
 }
  
-Matrix mpi_apsp(const FoxGrid* grid, Matrix input, u32 n) {
-  const u32 n_local = (u32)(n/grid->q);
-  Matrix A          = matrix_create(n_local, 0);
-  Matrix B          = matrix_create(n_local, 0);
-  Matrix C          = matrix_create(n_local, INF);
-
-  FoxWorkspace workspace = { 
-    .broadcast_A = matrix_create(n_local, 0) 
-  };
-
-  fox_scatter(grid, input, n, A);
-
-  matrix_copy_into(B, A);
-
-  for (u32 step = 1; step + 1 < n; step <<= 1) {
-    fox_multiply((i32)n, grid, C, A, B, &workspace);
-    matrix_copy_into(A, C);
-    matrix_copy_into(B, A);
-  }
-
-  Matrix result = fox_gather(grid, input, n, A);
-
-  matrix_free(A);
-  matrix_free(B);
-  matrix_free(C);
-  matrix_free(workspace.broadcast_A);
-
-  return result;
-}
-
+#ifndef  

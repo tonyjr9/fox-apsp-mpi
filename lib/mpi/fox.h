@@ -4,24 +4,7 @@
 #include <mpi.h>
 
 #include "imports.h"
-
-typedef struct fox_grid FoxGrid;
-
-struct fox_grid {
-  MPI_Comm
-    comm,     // global comm
-    row_comm,
-    col_comm;
-
-  i32
-    p,        // #processes
-    my_rank;  // global comm rank
-
-  u16
-    q,        // q * q = processors
-    my_row,
-    my_col;
-};
+#include "foxgrid.h"
 
 typedef struct fox_workspace FoxWorkspace;
 
@@ -38,7 +21,6 @@ void   fox_grid_free   (FoxGrid* g);
  * Only prints error if run by ROOT process.
 */
 bool   fox_validate    (u32 n, u16 p, int rank);
-void   fox_setup_grid  (FoxGrid* g);
 
 void   fox_scatter     (const FoxGrid* g, const Matrix global, u32 n, Matrix a);
 Matrix fox_gather      (const FoxGrid* g, Matrix global, u32 n, Matrix a);
