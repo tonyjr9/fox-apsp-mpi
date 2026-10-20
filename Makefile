@@ -1,29 +1,34 @@
 CC       ?= gcc
 MPICC    ?= mpicc
-CFLAGS   ?= -O3 -Wall -lm -Wextra -std=c11 -march=native
+MPIRUN   ?= mpirun --oversubscribe
+CFLAGS   ?= -O3 -Wall -Wextra -std=c11 -march=native
 CPPFLAGS += -Ilib/common -Ilib/seq -Ilib/mpi -MMD -MP
+LDLIBS   += -lm
 
 BUILD := build
 
 COMMON_SRC := $(wildcard lib/common/*.c)
 COMMON_OBJ := $(COMMON_SRC:%.c=$(BUILD)/%.o)
 
-SEQ_OBJ := $(BUILD)/seq/main.o $(BUILD)/lib/seq/apsp_seq.o
-FOX_OBJ := $(BUILD)/fox/main.o $(BUILD)/lib/mpi/fox.o $(BUILD)/lib/mpi/foxgrid.o $(BUILD)/lib/mpi/apsp_mpi.o
+SEQ_LIB_OBJ := $(BUILD)/lib/seq/apsp_seq.o
+SEQ_OBJ     := $(BUILD)/seq/main.o $(SEQ_LIB_OBJ)
+FOX_OBJ     := $(BUILD)/fox/main.o $(BUILD)/lib/mpi/fox.o $(BUILD)/lib/mpi/foxgrid.o $(BUILD)/lib/mpi/apsp_mpi.o
 
 TESTS    := test_matrix test_matrix_io test_minplus
 TEST_BIN := $(addprefix $(BUILD)/tests/,$(TESTS))
 
-.PHONY: all test check check-seq time-seq clean
+# Process counts used by check-fox
+NP ?= 1 4 9
 
-# The MPI target will be enabled once Fox's implementation is complete.
-all: seq
+.PHONY: all test check check-seq check-fox bench time-seq clean
+
+all: seq fox
 
 fox: $(FOX_OBJ) $(COMMON_OBJ)
-	$(MPICC) $(CFLAGS) -o $@ $^ -lm
+	$(MPICC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
 seq: $(SEQ_OBJ) $(COMMON_OBJ)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
 # src/main.c is compiled twice: with MPI (-DUSE_MPI) and without.
 $(BUILD)/fox/main.o: src/main.c
@@ -43,9 +48,9 @@ $(BUILD)/%.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 # Unit tests (no MPI needed)
-$(BUILD)/tests/%: tests/%.c tests/test_util.h $(COMMON_OBJ)
+$(BUILD)/tests/%: tests/%.c tests/test_util.h $(COMMON_OBJ) $(SEQ_LIB_OBJ)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) -Itests $(CFLAGS) -o $@ $< $(COMMON_OBJ)
+	$(CC) $(CPPFLAGS) -Itests $(CFLAGS) -o $@ $< $(COMMON_OBJ) $(SEQ_LIB_OBJ)
 
 test: $(TEST_BIN)
 	@for t in $(TEST_BIN); do ./$$t || exit 1; done
@@ -53,7 +58,15 @@ test: $(TEST_BIN)
 check-seq: seq
 	./tests/run_tests.sh
 
-check: test check-seq
+check-fox: fox
+	@for np in $(NP); do \
+	  BIN=./fox NP=$$np MPIRUN="$(MPIRUN)" ./tests/run_tests.sh || exit 1; \
+	done
+
+check: test check-seq check-fox
+
+bench: seq fox
+	MPIRUN="$(MPIRUN)" ./bench/run_bench.sh
 
 INPUT ?= tests/examples/input/input6
 

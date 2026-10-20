@@ -1,7 +1,7 @@
 #include "minplus.h"
 
 void minplus_matrix_reset(Matrix c) {
-  for (u32 i = 0; i < c.n * c.n; i++) {
+  for (u64 i = 0; i < (u64)c.n * c.n; i++) {
     c.data[i] = INF;
   }
 }
@@ -27,16 +27,22 @@ void minplus_multiply_into(
 #define BLK 128
 
 /*
- * Min-plus product: c[i][j] = min over k of (a[i][k] + b[k][j]).
- * Overwrites c, which must not share memory with a or b.
+ * Min-plus accumulate: c[i][j] = min(c[i][j], min over k of (a[i][k] + b[k][j])).
+ * c keeps its previous values, so calling this once per block of k (as Fox
+ * does) builds the full product. c must not share memory with a or b.
  */
 void minplus_relax(Matrix c, const Matrix a, const Matrix b) {
-#ifdef BLK
   if (c.n != a.n || a.n != b.n)
     return;
 
   const u32 n = c.n;
 
+  /*
+   * Tiled in BLK x BLK blocks so the touched slices of a, b and c stay in
+   * cache. Inside a tile the order is i-k-j, not i-j-k: the inner loop walks
+   * along rows of b and c (contiguous memory) instead of down a column of b
+   * (stride n), which lets the compiler vectorize it.
+   */
   for (u32 ii = 0; ii < n; ii += BLK) {
     const u32 i_end = MIN(ii + BLK, n);
 
@@ -47,16 +53,19 @@ void minplus_relax(Matrix c, const Matrix a, const Matrix b) {
         const u32 j_end = MIN(jj + BLK, n);
 
         for (u32 i = ii; i < i_end; i++) {
-          u32*       restrict out    = &c.data[i * n];
-          const u32* restrict read_a = &a.data[i * n];
+          // restrict: promises the compiler these pointers don't overlap, so it
+          // can keep values in registers and vectorize. Breaking it is undefined behaviour.
+          u32*       restrict out    = &c.data[i * n];   // row i of c
+          const u32* restrict read_a = &a.data[i * n];   // row i of a
 
           for (u32 k = kk; k < k_end; k++) {
             const u32 left = read_a[k];
-            if (left >= INF)
+            if (left >= INF) // no path i -> k, row k of b can't help
               continue;
 
-            const u32* restrict read_b = &b.data[k * n];
+            const u32* restrict read_b = &b.data[k * n];  // row k of b
 
+            // MIN compiles to a single SIMD min instruction per vector.
             for (u32 j = jj; j < j_end; j++) {
               const u32 candidate = left + read_b[j];
               out[j] = MIN(candidate, out[j]);
@@ -66,61 +75,10 @@ void minplus_relax(Matrix c, const Matrix a, const Matrix b) {
       }
     }
   }
-
-#else
-  if (c.n != a.n || a.n != b.n)
-    return;
-
-  const u32 n = c.n;
-
-  /*
-   * Loop order is i-k-j, not i-j-k: the inner loop walks along rows of
-   * b and c (contiguous memory) instead of down a column of b (stride n).
-   * This avoids a cache miss on nearly every access and lets the
-   * compiler vectorize the inner loop.
-   */
-  for (u32 i = 0; i < n; i++) {
-    // restrict: promises the compiler these pointers don't overlap, so it
-    // can keep values in registers and vectorize. Breaking it is undefined behaviour.
-    u32*       restrict out    = &c.data[i * n];   // row i of c
-    const u32* restrict read_a = &a.data[i * n];   // row i of a
-
-    // Row i starts as unreachable
-    //for (
-    //  u32 j = 0;
-    //  j < n;
-    //  out[j++] = INF
-    //);
-
-    // Relax row i of c through each intermediate k:
-    // c[i][j] = min(c[i][j], a[i][k] + b[k][j])
-    for (u32 k = 0; k < n; k++) {
-      const u32 left = read_a[k];
-      if (left >= INF) // no path i -> k, row k of b can't help
-        continue;
-
-      const u32* restrict read_b = &b.data[k * n];  // row k of b
-
-      for (u32 j = 0; j < n; j++) {
-        const u32 right = read_b[j];
-        const u32 candidate = left + right;
-
-        out[j] = MIN(candidate, out[j]);
-        // MIN(a, b) is defined as (a <= b ? a : b)
-        // this can be vectorized by the compiler into a single CPU
-        // SIMD instruction helping a lot in the speed of the process
-        // this can only be achieved if the compiler knows for sure
-        // it can vectorize, and by giving it restrict in the declaration
-        // of the pointers above, it can trust us
-      }
-    }
-  }
-
-#endif
 }
 
 Matrix minplus_apsp(const Matrix m) {
-  Matrix 
+  Matrix
     d    = matrix_copy(m),
     next = matrix_create(m.n, INF);
 
@@ -136,6 +94,9 @@ Matrix minplus_apsp(const Matrix m) {
     covered <<= 1
   ) {
     minplus_multiply_into(next, d, d);
+
+    if (matrix_equal(next, d))
+      break;
 
     u32* temp = next.data;
     next.data = d.data;

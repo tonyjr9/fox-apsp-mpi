@@ -6,7 +6,7 @@
 
 /* Reads "N" followed by N*N integers from `in`.
  * Off-diagonal 0 becomes INF (no edge); the diagonal is forced to 0.
- * Returns a new matrix, or NULL (with a message on stderr) on bad input. */
+ * Returns a new matrix, or MATRIX_NULL (with a message on stderr) on bad input. */
 Matrix matrix_read(FILE *in);
 
 /* Prints one row per line, values separated by one space.

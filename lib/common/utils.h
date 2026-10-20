@@ -1,13 +1,13 @@
-#ifndef __UTILS_H__
-#define __UTILS_H__
+#ifndef UTILS_H
+#define UTILS_H
 
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MIN(a, b)    (a <= b ? a : b)
+#define MIN(a, b)    ((a) <= (b) ? (a) : (b))
 
 #define INF          ((u32)(UINT32_MAX / 2))
-#define MAT(m, i, j) ((m).data[(i) * (m).n + (j)]) 
+#define MAT(m, i, j) ((m).data[(i) * (m).n + (j)])
 
 typedef uint8_t  u8;
 typedef uint16_t u16;
@@ -20,6 +20,4 @@ typedef int64_t  i64;
 typedef float    f32;
 typedef double   f64;
 
-#define nullptr NULL
-
-#endif /* !__UTILS_H__ */
+#endif /* !UTILS_H */

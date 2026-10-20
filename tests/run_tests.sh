@@ -1,12 +1,25 @@
 #!/bin/sh
+#
+# Regression on tests/examples.
+#   ./tests/run_tests.sh                    # sequential: ./seq
+#   BIN=./fox NP=4 ./tests/run_tests.sh     # MPI: $MPIRUN -np 4 ./fox
+#
+# With NP set, inputs whose N is not divisible by sqrt(NP) (or any input, when
+# NP is not a perfect square) must be rejected: non-zero exit and exactly
+# "$INVALID_MSG" on stdout (the content of output5).
+# An input whose reference output is that message (input5) is skipped when the
+# configuration is valid, since there is no matrix to compare against.
 
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 INPUT_DIR="$ROOT/tests/examples/input"
 OUTPUT_DIR="$ROOT/tests/examples/output"
-BIN="$ROOT/seq"
-TIME_LIMIT=${TIME_LIMIT:-10}   # seconds per test, override with TIME_LIMIT=30 ./test.sh
+BIN=${BIN:-$ROOT/seq}
+NP=${NP:-}
+MPIRUN=${MPIRUN:-mpirun}
+INVALID_MSG='ERROR: Invalid configuration!'
+TIME_LIMIT=${TIME_LIMIT:-120}  # seconds per test, override with TIME_LIMIT=300 ./tests/run_tests.sh
 
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -27,30 +40,42 @@ now_ms() {
 
 # Use `timeout` when available so a hang fails the test instead of the run
 if command -v timeout >/dev/null 2>&1; then
-  RUN="timeout $TIME_LIMIT"
+  TIMEOUT="timeout $TIME_LIMIT"
 else
-  RUN=
+  TIMEOUT=
 fi
 
 [ -x "$BIN" ] || { echo "${RED}error:${RESET} $BIN not found, run make first" >&2; exit 1; }
+
+LAUNCH=
+Q=0
+if [ -n "$NP" ]; then
+  LAUNCH="$MPIRUN -np $NP"
+  Q=1; while [ $((Q * Q)) -lt "$NP" ]; do Q=$((Q + 1)); done
+  [ $((Q * Q)) -eq "$NP" ] || Q=0   # not a perfect square: every input is invalid
+fi
+
+echo "${DIM}== $(basename "$BIN")${NP:+ np=$NP}${RESET}"
 
 pass=0; fail=0; skip=0
 
 for input in "$INPUT_DIR"/input*; do
   name=$(basename "$input")
   expected="$OUTPUT_DIR/output${name#input}"
+  n=$(head -n 1 "$input")
 
-  # input5 checks MPI compatibility only: N=5 is not divisible by
-  # the Q x Q process grids required by the assignment.
-  if [ "$name" = input5 ]; then
-    printf '%sSKIP%s  %s %s(MPI only)%s\n' "$YELLOW" "$RESET" "$name" "$DIM" "$RESET"
+  valid=1
+  [ -n "$NP" ] && { [ "$Q" -eq 0 ] || [ $((n % Q)) -ne 0 ]; } && valid=0
+
+  if [ "$valid" -eq 1 ] && printf '%s' "$INVALID_MSG" | cmp -s - "$expected"; then
+    printf '%sSKIP%s  %s %s(reference is for an invalid grid)%s\n' "$YELLOW" "$RESET" "$name" "$DIM" "$RESET"
     skip=$((skip + 1))
     continue
   fi
 
   actual="$TMP_DIR/$name"
   start=$(now_ms)
-  if $RUN "$BIN" < "$input" > "$actual" 2> "$TMP_DIR/$name.err"; then status=0; else status=$?; fi
+  if $TIMEOUT $LAUNCH "$BIN" < "$input" > "$actual" 2> "$TMP_DIR/$name.err"; then status=0; else status=$?; fi
   end=$(now_ms)
 
   elapsed=
@@ -59,6 +84,14 @@ for input in "$INPUT_DIR"/input*; do
   if [ "$status" -eq 124 ]; then
     printf '%sTIME%s  %s %s(> %ss)%s\n' "$RED" "$RESET" "$name" "$DIM" "$TIME_LIMIT" "$RESET"
     fail=$((fail + 1))
+  elif [ "$valid" -eq 0 ]; then
+    if [ "$status" -ne 0 ] && printf '%s' "$INVALID_MSG" | cmp -s - "$actual"; then
+      printf '%sPASS%s  %s %s(rejected)%s\n' "$GREEN" "$RESET" "$name" "$DIM" "$RESET"
+      pass=$((pass + 1))
+    else
+      printf '%sFAIL%s  %s should have been rejected (exit %s)\n' "$RED" "$RESET" "$name" "$status"
+      fail=$((fail + 1))
+    fi
   elif [ "$status" -ne 0 ]; then
     printf '%sCRASH%s %s%s exit %s\n' "$RED" "$RESET" "$name" "$elapsed" "$status"
     sed 's/^/        /' "$TMP_DIR/$name.err" | head -n 10

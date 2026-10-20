@@ -1,5 +1,6 @@
 #include "matrix.h"
 #include "minplus.h"
+#include "apsp_seq.h"
 #include "test_util.h"
 
 #define X INF
@@ -128,11 +129,40 @@ static void test_relax_over_two_halves(void) {
   matrix_free(c);
 }
 
+/* Repeated squaring must agree with Floyd-Warshall on a random graph.
+ * n = 150 is not a multiple of BLK, so partial tiles are exercised too. */
+static void test_apsp_matches_floyd_warshall(void) {
+  const u32 n = 150;
+  Matrix w = matrix_create(n, INF);
+  u32 seed = 12345;
+
+  for (u32 i = 0; i < n; i++) {
+    for (u32 j = 0; j < n; j++) {
+      seed = seed * 1103515245u + 12345u;
+      const u32 v = (seed >> 16) % 100;
+      if (i == j)
+        MAT(w, i, j) = 0;
+      else if (v < 10) // ~10% density
+        MAT(w, i, j) = 1 + (seed >> 8) % 1000;
+    }
+  }
+
+  Matrix squared = apsp(w);
+  Matrix fw      = floyd_warshall(w);
+
+  CHECK(matrix_equal(squared, fw));
+
+  matrix_free(w);
+  matrix_free(squared);
+  matrix_free(fw);
+}
+
 int main(void) {
   test_assignment_squaring();
   test_identity();
   test_all_inf_no_overflow();
   test_relax_keeps_existing_minimum();
   test_relax_over_two_halves();
+  test_apsp_matches_floyd_warshall();
   return test_report("test_minplus");
 }
