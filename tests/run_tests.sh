@@ -4,6 +4,10 @@
 #   ./tests/run_tests.sh                    # sequential: ./seq
 #   BIN=./fox NP=4 ./tests/run_tests.sh     # MPI: $MPIRUN -np 4 ./fox
 #
+# The binaries take the input matrix as a binary file and write the result to
+# a binary output file: inputs are <input><BIN_SUFFIX>, and the output is
+# compared with cmp against <output><BIN_SUFFIX>. Both are created by
+# tests/examples/to_bin.sh (run first by `make check-seq` / `make check-fox`).
 # With NP set, inputs whose N is not divisible by sqrt(NP) (or any input, when
 # NP is not a perfect square) must be rejected: non-zero exit and exactly
 # "$INVALID_MSG" on stdout (the content of output5).
@@ -20,6 +24,7 @@ BIN=${BIN:-$ROOT/seq}
 NP=${NP:-}
 MPIRUN=${MPIRUN:-mpirun}
 INVALID_MSG='ERROR: Invalid configuration!'
+BIN_SUFFIX=${BIN_SUFFIX:-.bin}
 TIME_LIMIT=${TIME_LIMIT:-120}  # seconds per test, override with TIME_LIMIT=300 ./tests/run_tests.sh
 
 TMP_DIR=$(mktemp -d)
@@ -60,13 +65,26 @@ echo "${DIM}== $(basename "$BIN")${NP:+ np=$NP}${RESET}"
 
 pass=0; fail=0; skip=0
 
-for input in "$INPUT_DIR"/input*; do
-  name=$(basename "$input")
-  expected="$OUTPUT_DIR/output${name#input}"
-  n=$(head -n 1 "$input")
+for input in "$INPUT_DIR"/*.bin; do
+  [ -f "$input" ] || continue
+  name=$(basename "$input" "$BIN_SUFFIX")
+  expected="$OUTPUT_DIR/output${name#input}${BIN_SUFFIX}"
+
+  # N is the 4-byte little-endian u32 at the start of the file
+  # (4 bytes: N=0 is a bad file for this script, so use it as an error sentinel)
+  n=$(head -c 4 "$input" | od -An -tu4 -j 0 | tr -d ' ')
+  [ -n "$n" ] || { printf '%sFAIL%s  %s (cannot read N from binary input)\n' "$RED" "$RESET" "$name"; fail=$((fail + 1)); continue; }
 
   valid=1
   [ -n "$NP" ] && { [ "$Q" -eq 0 ] || [ $((n % Q)) -ne 0 ]; } && valid=0
+
+  # Only a valid configuration needs a binary reference; rejected runs are
+  # checked against $INVALID_MSG on stdout and need no reference file.
+  if [ "$valid" -eq 1 ] && [ ! -f "$expected" ]; then
+    printf '%sSKIP%s  %s %s(no binary reference output)%s\n' "$YELLOW" "$RESET" "$name" "$DIM" "$RESET"
+    skip=$((skip + 1))
+    continue
+  fi
 
   if [ "$valid" -eq 1 ] && printf '%s' "$INVALID_MSG" | cmp -s - "$expected"; then
     printf '%sSKIP%s  %s %s(reference is for an invalid grid)%s\n' "$YELLOW" "$RESET" "$name" "$DIM" "$RESET"
@@ -74,9 +92,9 @@ for input in "$INPUT_DIR"/input*; do
     continue
   fi
 
-  actual="$TMP_DIR/$name"
+  actual="$TMP_DIR/$name${BIN_SUFFIX}"
   start=$(now_ms)
-  if $TIMEOUT $LAUNCH "$BIN" < "$input" > "$actual" 2> "$TMP_DIR/$name.err"; then status=0; else status=$?; fi
+  if $TIMEOUT $LAUNCH "$BIN" "$input" "$actual" > "$TMP_DIR/$name.out" 2> "$TMP_DIR/$name.err"; then status=0; else status=$?; fi
   end=$(now_ms)
 
   elapsed=
@@ -86,7 +104,8 @@ for input in "$INPUT_DIR"/input*; do
     printf '%sTIME%s  %s %s(> %ss)%s\n' "$RED" "$RESET" "$name" "$DIM" "$TIME_LIMIT" "$RESET"
     fail=$((fail + 1))
   elif [ "$valid" -eq 0 ]; then
-    if [ "$status" -ne 0 ] && printf '%s' "$INVALID_MSG" | cmp -s - "$actual"; then
+    # Rejected runs write no output file; the message goes to stdout.
+    if [ "$status" -ne 0 ] && printf '%s' "$INVALID_MSG" | cmp -s - "$TMP_DIR/$name.out"; then
       printf '%sPASS%s  %s %s(rejected)%s\n' "$GREEN" "$RESET" "$name" "$DIM" "$RESET"
       pass=$((pass + 1))
     else
@@ -95,14 +114,14 @@ for input in "$INPUT_DIR"/input*; do
     fi
   elif [ "$status" -ne 0 ]; then
     printf '%sCRASH%s %s%s exit %s\n' "$RED" "$RESET" "$name" "$elapsed" "$status"
-    sed 's/^/        /' "$TMP_DIR/$name.err" | head -n 10
+    sed 's/^/        /' "$TMP_DIR/$name.out" "$TMP_DIR/$name.err" | head -n 10
     fail=$((fail + 1))
-  elif diff -u "$expected" "$actual" > "$TMP_DIR/$name.diff"; then
+  elif cmp -s "$expected" "$actual"; then
     printf '%sPASS%s  %s%s\n' "$GREEN" "$RESET" "$name" "$elapsed"
     pass=$((pass + 1))
   else
-    printf '%sFAIL%s  %s%s\n' "$RED" "$RESET" "$name" "$elapsed"
-    sed 's/^/        /' "$TMP_DIR/$name.diff" | head -n 20
+    printf '%sFAIL%s  %s%s (output differs from %s)\n' "$RED" "$RESET" "$name" "$elapsed" "$expected"
+    ls -la "$expected" "$actual" | sed 's/^/        /'
     fail=$((fail + 1))
   fi
 done

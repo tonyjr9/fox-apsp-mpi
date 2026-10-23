@@ -5,3 +5,10 @@ fox
 compile_commands.json
 matgen
 tests/large/
+rand0_input*.bin
+rand0_output*.bin
+rand0_input.zip
+rand0_output.zip
+rand.hostfile
+rand/
+tests/examples/**/*.bin

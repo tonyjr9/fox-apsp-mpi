@@ -5,21 +5,31 @@
 
 #include "apsp_mpi.h"
 
-int main(int argc, char **argv) {
+i32 main(const i32 argc, const char* argv[]) {
+  if (argc < 3) {
+    fprintf(stderr, "Expected file name path to matrix binary and output file name\n");
+    return 1;
+  }
 
-  int n = 0, my_rank, nproc;
+  i32 n = 0, my_rank, nproc;
 
   Matrix input = MATRIX_NULL;
 
   FoxGrid grid;
 
-  MPI_Init(&argc, &argv);
+  MPI_Init((int*)&argc, (char***)&argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &nproc);
 
-  // Only the root reads stdin; the others learn n from the broadcast.
+  // Only the root reads the input file; the others learn n from the broadcast.
   if (my_rank == 0) {
-    input = matrix_read(stdin);
+    FILE* in = fopen(argv[1], "rb");
+    if (in != NULL) {
+      input = matrix_read_bin(in);
+      fclose(in);
+    } else {
+      fprintf(stderr, "Could not open input file %s\n", argv[1]);
+    }
     n = (input.data == NULL) ? 0 : (int)input.n;
   }
 
@@ -35,15 +45,24 @@ int main(int argc, char **argv) {
 
   // Start the clock together; I/O is left out of the measurement.
   MPI_Barrier(MPI_COMM_WORLD);
-  const double start = MPI_Wtime();
+  const f64 start = MPI_Wtime();
 
   Matrix result = mpi_apsp(&grid, input, (u32)n);
 
-  const double elapsed_ms = (MPI_Wtime() - start) * 1e3;
+  const f64 elapsed_ms = (MPI_Wtime() - start) * 1e3;
 
   if (my_rank == 0) {
     fprintf(stderr, "compute_ms=%.3f\n", elapsed_ms);
-    matrix_print(stdout, result);
+
+    FILE* out = fopen(argv[2], "wb");
+    if (out == NULL) {
+      fprintf(stderr, "Could not open output file %s\n", argv[2]);
+      matrix_free(result);
+      return 1;
+    }
+
+    matrix_write_bin(out, result);
+    fclose(out);
   }
 
   // On the root, result is input (written in place); elsewhere both are MATRIX_NULL.
@@ -60,25 +79,47 @@ int main(int argc, char **argv) {
 
 #include "apsp_seq.h"
 
-static double now_ms(void) {
+static f64 now_ms(void) {
   struct timespec ts;
   timespec_get(&ts, TIME_UTC);
   return ts.tv_sec * 1e3 + ts.tv_nsec / 1e6;
 }
 
-int main(void) {
-  Matrix m = matrix_read(stdin);
+i32 main(const i32 argc, const char* argv[]) {
+  if (argc < 3) {
+    fprintf(stderr, "Expected file name path to matrix binary and output file name\n");
+    return 1;
+  }
+
+  FILE* in = fopen(argv[1], "rb");
+  if (in == NULL) {
+    fprintf(stderr, "Could not open input file %s\n", argv[1]);
+    return 1;
+  }
+
+  Matrix m = matrix_read_bin(in);
+  fclose(in);
   if (m.data == NULL)
     return 1;
 
-  const double start = now_ms();
+  const f64 start = now_ms();
   Matrix r = apsp(m);
   fprintf(stderr, "compute_ms=%.3f\n", now_ms() - start);
 
-  matrix_print(stdout, r);
+  FILE* out = fopen(argv[2], "wb");
+  if (out == NULL) {
+    fprintf(stderr, "Could not open output file %s\n", argv[2]);
+    matrix_free(r);
+    matrix_free(m);
+    return 1;
+  }
+
+  matrix_write_bin(out, r);
+  fclose(out);
 
   matrix_free(r);
   matrix_free(m);
+
   return 0;
 }
 

@@ -24,7 +24,7 @@ bool fox_validate(u32 n, int p, int rank) {
   // The message on stdout matches tests/examples/output/output5 byte for byte.
   if (rank == 0) {
     fprintf(stderr, "[ERROR]: %s.\n", reason);
-    printf("ERROR: Invalid configuration!");
+    printf("ERROR: Invalid configuration!\n");
   }
   return false;
 }

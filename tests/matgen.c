@@ -57,7 +57,7 @@ i32 main(const i32 argc, const char* argv[]) {
     seed = (u32)strtoul(argv[3], NULL, 10);
 
   if (n <= 0 || count <= 0) {
-    fprintf(stderr, "N and count must be positive i32egers\n");
+    fprintf(stderr, "N and count must be positive integers\n");
     return EXIT_FAILURE;
   }
 
@@ -75,7 +75,7 @@ i32 main(const i32 argc, const char* argv[]) {
 
     char filename[32];
     if (snprintf(filename, 32, "rand%u_input%u.bin", k, n) <= 0) {
-      fprintf(stderr, "Could not create file name string");
+      fprintf(stderr, "Could not create file name string\n");
       matrix_free(m);
       exit(EXIT_FAILURE);
     }

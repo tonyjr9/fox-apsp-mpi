@@ -6,7 +6,7 @@
   authors: (
     (name: "Antonio Lanção", id: "up202205416"),
     (name: "David Sá", id: "up202303580"),
-    (name: "Henrique Teixeira", id: "up202303580"),
+    (name: "Henrique Teixeira", id: "up202306640"),
   ),
   course: "Parallel Computing 2026/27",
   institution: "Faculty of Sciences · University of Porto",

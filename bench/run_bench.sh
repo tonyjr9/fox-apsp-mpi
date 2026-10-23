@@ -17,6 +17,7 @@ INPUTS=${INPUTS:-"input300 input600 input900 input1200 input3000"}
 NPS=${NPS:-"1 4 9 16"}
 REPS=${REPS:-3}
 MPIRUN=${MPIRUN:-mpirun}
+BIN_SUFFIX=${BIN_SUFFIX:-.bin}
 OUT=${OUT:-$ROOT/bench/results.csv}
 
 for bin in "$BIN_SEQ" "$BIN_FOX"; do
@@ -32,14 +33,19 @@ grid_q() {
   [ $((q * q)) -eq "$1" ] && echo "$q" || echo 0
 }
 
+# N is the 4-byte little-endian u32 at the start of a binary matrix file
+bin_n() {
+  head -c 4 "$1" | od -An -tu4 -j 0 | tr -d ' '
+}
+
 # run <impl> <np> <input> <command...>: one CSV row per repetition
 run() {
   impl=$1; np=$2; input=$3; shift 3
-  n=$(head -n 1 "$INPUT_DIR/$input")
+  n=$(bin_n "$INPUT_DIR/$input$BIN_SUFFIX")
   rep=1
   while [ "$rep" -le "$REPS" ]; do
     ms=
-    if "$@" < "$INPUT_DIR/$input" > /dev/null 2> "$ERR"; then
+    if "$@" "$INPUT_DIR/$input$BIN_SUFFIX" /dev/null 2> "$ERR"; then
       ms=$(sed -n 's/^compute_ms=//p' "$ERR")
     fi
     echo "$impl,$np,$input,$n,$rep,${ms:-NA}"
@@ -50,7 +56,7 @@ run() {
 {
   echo "impl,np,input,n,rep,compute_ms"
   for input in $INPUTS; do
-    n=$(head -n 1 "$INPUT_DIR/$input")
+    n=$(bin_n "$INPUT_DIR/$input$BIN_SUFFIX")
     run seq 1 "$input" "$BIN_SEQ"
 
     for np in $NPS; do
