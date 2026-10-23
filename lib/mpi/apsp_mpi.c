@@ -1,17 +1,28 @@
 #include "apsp_mpi.h"
 
 #include "fox.h"
+#include "fox_config.h"
 
 Matrix mpi_apsp(const FoxGrid* grid, Matrix input, u32 n) {
-  const u32 n_local = n / (u32)grid->q;
+  // Ident distribution computes on the full matrix everywhere: n_local == n.
+  const u32 n_local = (FOX_DIST == FOX_DIST_IDENT) ? n : n / (u32)grid->q;
   Matrix A          = matrix_create(n_local, 0);
   Matrix B          = matrix_create(n_local, 0);
   Matrix C          = matrix_create(n_local, 0);
 
+#if FOX_DIST == FOX_DIST_IDENT
+  // No communication: fox_multiply is a plain local product, so the
+  // receive buffers are never allocated (matrix_free is NULL-safe).
+  FoxWorkspace workspace = {
+    .A_buf  = { MATRIX_NULL, MATRIX_NULL },
+    .B_next = MATRIX_NULL
+  };
+#else
   FoxWorkspace workspace = {
     .A_buf  = { matrix_create(n_local, 0), matrix_create(n_local, 0) },
     .B_next = matrix_create(n_local, 0)
   };
+#endif
 
   fox_scatter(grid, input, A);
 

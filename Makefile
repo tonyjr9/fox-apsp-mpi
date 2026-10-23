@@ -22,12 +22,40 @@ NP ?= 1 4 9
 MATRICES_2_TO_THE = 6 7 8 9 10 11 12 13 14
 GEN_SEED ?= 42
 
-.PHONY: all test check check-seq check-fox bench time-seq gen examples-bin clean
+# Fox distribution variant, selected at compile time (lib/mpi/fox_config.h):
+# row (default), colmajor, ident (no communication: every process holds the
+# full matrix). Pick one with the fox-colmajor / fox_shared targets below;
+# FOXFLAGS is there if you want to point a custom rule at another value.
+FOXFLAGS ?=
+
+.PHONY: all test check check-seq check-fox bench time-seq gen examples-bin fox_shared fox-colmajor clean
 
 all: seq fox
 
 fox: $(FOX_OBJ) $(COMMON_OBJ)
 	$(MPICC) $(CFLAGS) -o $@ $^ $(LDLIBS)
+
+# The experiment variants: fox recompiled with a different FOX_DIST, into its
+# own object dir (one per variant), so the default `fox` is left untouched
+# and the variants never reuse each other's objects.
+define build_fox_variant
+	@mkdir -p $(FOX_VARIANT_DIR)
+	$(MPICC) $(CPPFLAGS) $(CFLAGS) $(FOXFLAGS) -DUSE_MPI -c src/main.c -o $(FOX_VARIANT_DIR)/main.o
+	$(MPICC) $(CPPFLAGS) $(CFLAGS) $(FOXFLAGS) -c lib/mpi/fox.c -o $(FOX_VARIANT_DIR)/fox.o
+	$(MPICC) $(CPPFLAGS) $(CFLAGS) $(FOXFLAGS) -c lib/mpi/foxgrid.c -o $(FOX_VARIANT_DIR)/foxgrid.o
+	$(MPICC) $(CPPFLAGS) $(CFLAGS) $(FOXFLAGS) -c lib/mpi/apsp_mpi.c -o $(FOX_VARIANT_DIR)/apsp_mpi.o
+	$(MPICC) $(CFLAGS) -o $@ $(FOX_VARIANT_DIR)/main.o $(FOX_VARIANT_DIR)/fox.o $(FOX_VARIANT_DIR)/foxgrid.o $(FOX_VARIANT_DIR)/apsp_mpi.o $(COMMON_OBJ) $(LDLIBS)
+endef
+
+fox_shared: FOXFLAGS = -DFOX_DIST=FOX_DIST_IDENT
+fox_shared: FOX_VARIANT_DIR = $(BUILD)/fox_variant_ident
+fox_shared: lib/mpi/fox_config.h lib/mpi/fox.c lib/mpi/foxgrid.c lib/mpi/apsp_mpi.c src/main.c $(COMMON_OBJ)
+	$(build_fox_variant)
+
+fox-colmajor: FOXFLAGS = -DFOX_DIST=FOX_DIST_COLMAJOR
+fox-colmajor: FOX_VARIANT_DIR = $(BUILD)/fox_variant_colmajor
+fox-colmajor: lib/mpi/fox_config.h lib/mpi/fox.c lib/mpi/foxgrid.c lib/mpi/apsp_mpi.c src/main.c $(COMMON_OBJ)
+	$(build_fox_variant)
 
 seq: $(SEQ_OBJ) $(COMMON_OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
@@ -100,6 +128,6 @@ gen: $(BUILD)/tests/matgen
 	zip rand0_input.zip rand0_input*.bin || exit 1
 
 clean:
-	rm -rf $(BUILD) seq fox
+	rm -rf $(BUILD) seq fox fox_shared fox-colmajor
 
 -include $(shell find $(BUILD) -name '*.d' 2>/dev/null)

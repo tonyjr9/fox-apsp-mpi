@@ -24,10 +24,11 @@ static u32 rand_val(void) {
   return rand30() % (MAX_VAL + 1u);
 }
 
+/* Row-major index i is on the diagonal iff i % (n + 1) == 0. */
 static void make_random_matrix(Matrix m) {
   u64 N = (u64)(m.n) * (u64)(m.n);
   for (u64 i = 0; i < N; i++) {
-    if (i % m.n == 0) {
+    if (i % (m.n + 1) == 0) {
       m.data[i] = 0;
       continue;
     }
