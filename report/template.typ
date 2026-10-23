@@ -101,7 +101,7 @@
     text(20pt, weight: "bold", title)
     if subtitle != none { v(0.1em); align(text(12pt, fill: muted, subtitle), center); v(0.2em) }
     if institution != none { align(text(9pt, fill: muted, institution), center); v(0.2em)}
-    v(0.8em)
+    v(0.4em)
     line(length: 100%, stroke: 0.6pt + accent)
     v(0.6em)
     grid(

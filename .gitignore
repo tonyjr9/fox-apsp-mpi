@@ -4,3 +4,4 @@ seq
 fox
 compile_commands.json
 matgen
+tests/large/
