@@ -13,8 +13,9 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-INPUT_DIR="$ROOT/tests/examples/input"
-OUTPUT_DIR="$ROOT/tests/examples/output"
+EXAMPLES_DIR=${EXAMPLES_DIR:-$ROOT/tests/examples}  # e.g. EXAMPLES_DIR=tests/large
+INPUT_DIR="$EXAMPLES_DIR/input"
+OUTPUT_DIR="$EXAMPLES_DIR/output"
 BIN=${BIN:-$ROOT/seq}
 NP=${NP:-}
 MPIRUN=${MPIRUN:-mpirun}

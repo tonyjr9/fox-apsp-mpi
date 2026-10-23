@@ -14,17 +14,39 @@ The `-J` option uses `ssh.alunos.dcc.fc.up.pt` as a jump host to reach `l815`.
 
 ## 2. Set up SSH between machines (inside `l815`)
 
-Generate a key **without a passphrase** (just press Enter when prompted):
+The lab machines only accept key login (no passwords), and `mpirun` can't type a passphrase,
+so the key used between machines **must not have a passphrase**. If your existing key has one,
+`mpirun` hangs silently waiting for it. Create a separate key with an empty passphrase:
 
 ```bash
-ssh-keygen -t ed25519
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519_lab
 ```
 
-Copy the key to another machine (probably not even necessary, since the home directory is shared):
+Authorize it. The home directory is shared, so doing this once covers every machine:
 
 ```bash
-ssh-copy-id l816
+cat ~/.ssh/id_ed25519_lab.pub >> ~/.ssh/authorized_keys
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
 ```
+
+SSH ignores `authorized_keys` if `~/.ssh` or the file can be written by others, hence the `chmod`.
+
+Tell ssh to use this key for the lab machines by adding to `~/.ssh/config`:
+
+```
+Host l8*
+    IdentityFile ~/.ssh/id_ed25519_lab
+```
+
+Check that it works without any prompt (it should exit silently):
+
+```bash
+ssh -o BatchMode=yes l816 true
+```
+
+If it prints `Permission denied (publickey)`, ssh is still offering a key with a passphrase or a
+key not listed in `authorized_keys`.
 
 ### Accept the host keys of all machines
 
@@ -49,6 +71,23 @@ Alternative: `git clone` on the server, but this requires adding the SSH key to 
 
 ## 4. Run the benchmarks
 
+### Silence the X11 authorization warning
+
+On the lab machines, `mpirun` may print
+`Authorization required, but no authorization protocol specified`. This comes from hwloc (the
+hardware topology library used by Open MPI) trying to open the X display of whoever is logged in
+at the console. It is harmless, but disable that probe before running anything:
+
+```bash
+export HWLOC_COMPONENTS=-gl
+```
+
+It must be exported in the shell, so `mpirun` itself gets it. `unset DISPLAY` or
+`mpirun -x HWLOC_COMPONENTS=-gl` do not help. To make it permanent, add the line to the
+**top** of `~/.bashrc`, before any line that returns early for non-interactive shells.
+
+### Run
+
 On the server, inside the project folder:
 
 ```bash
@@ -67,4 +106,5 @@ done
 ```
 
 If any machine shows `DOWN`, remove it from `hostfile.txt` before running the benchmark
-(otherwise `mpirun` may hang).
+(otherwise `mpirun` may hang). If **every** machine shows `DOWN`, the problem is almost certainly
+the SSH key (see section 2), not the machines.
