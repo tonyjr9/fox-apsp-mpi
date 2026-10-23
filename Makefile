@@ -19,6 +19,7 @@ TEST_BIN := $(addprefix $(BUILD)/tests/,$(TESTS))
 
 # Process counts used by check-fox
 NP ?= 1 4 9
+MATRICES_2_TO_THE = 10 11 12 13 14
 
 .PHONY: all test check check-seq check-fox bench time-seq clean
 
@@ -52,6 +53,11 @@ $(BUILD)/tests/%: tests/%.c tests/test_util.h $(COMMON_OBJ) $(SEQ_LIB_OBJ)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) -Itests $(CFLAGS) -o $@ $< $(COMMON_OBJ) $(SEQ_LIB_OBJ)
 
+# Random matrix generator for benchmark inputs (writes rand%u_input%u.bin to the cwd)
+$(BUILD)/tests/matgen: tests/matgen.c $(COMMON_OBJ)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $< $(COMMON_OBJ)
+
 test: $(TEST_BIN)
 	@for t in $(TEST_BIN); do ./$$t || exit 1; done
 
@@ -73,6 +79,15 @@ INPUT ?= tests/examples/input/input6
 time-seq: seq
 	start=$$(date +%s%N); ./seq < "$(INPUT)" > /dev/null; end=$$(date +%s%N); \
 	awk -v start="$$start" -v end="$$end" 'BEGIN { printf "elapsed_ms=%.3f\n", (end - start) / 1000000 }'
+
+gen: $(BUILD)/tests/matgen
+	@for power in $(MATRICES_2_TO_THE); do \
+	  n=$$(awk -v p="$$power" 'BEGIN { print 2 ^ p }'); \
+	  echo "gen: N = $$n (2^$$power)"; \
+	  $(BUILD)/tests/matgen $$n 1 || exit 1; \
+	done
+	@echo "gen: zipping rand0_input*.bin into rand0_input.zip"; \
+	zip rand0_input.zip rand0_input*.bin || exit 1
 
 clean:
 	rm -rf $(BUILD) seq fox
