@@ -12,15 +12,10 @@ struct fox_workspace {
 };
 
 /*
- * Distribute / gather the N x N matrix (held by grid rank 0) across the
- * q x q grid, as directed by FOX_DIST (fox_config.h):
- * - row / colmajor: contiguous (n/q) x (n/q) blocks via MPI_Scatter /
- *   MPI_Gather; rank r owns block (r/q, r%q) or (r%q, r/q) respectively.
- * - ident: a single full-matrix broadcast; every process owns the whole
- *   matrix and nothing is ever communicated again.
- * `global` is only used on rank 0; fox_gather returns it there and
- * MATRIX_NULL on every other rank (ident returns a copy of the local
- * result on rank 0).
+ * Distribute / gather the N x N matrix (held by grid rank 0) as contiguous
+ * n_local x n_local blocks across the q x q grid using MPI_Scatter / MPI_Gather.
+ * Grid rank r owns block (r/q, r%q). `global` is only used on rank 0;
+ * fox_gather returns it there and MATRIX_NULL on every other rank.
  */
 void   fox_scatter  (const FoxGrid* g, const Matrix global, Matrix local);
 Matrix fox_gather   (const FoxGrid* g, Matrix global, const Matrix local);
@@ -30,11 +25,30 @@ Matrix fox_gather   (const FoxGrid* g, Matrix global, const Matrix local);
  * (x) is the min-plus product. Communication for step s+1 overlaps the
  * computation of step s. local_b is used as a buffer: its content is
  * undefined afterwards.
- * With FOX_DIST_IDENT this is a plain full-matrix min-plus product with no
- * communication: local_a is the whole matrix and workspace is unused.
  */
 void   fox_multiply (const FoxGrid* g, Matrix local_c,
                      const Matrix local_a, Matrix local_b,
                      FoxWorkspace* workspace);
+
+/*
+ * Shared variant (the fox_shared binary). Every process keeps a full copy of
+ * the matrix, stored block by block in rank order: block (r/q, r%q) is the
+ * r-th contiguous (n/q) x (n/q) piece. Knowing that layout, each process reads
+ * the A and B blocks of every Fox step straight from memory, so the multiply
+ * itself communicates nothing; the only messages are the initial broadcast
+ * and one all-gather of the new C blocks per squaring.
+ *
+ * fox_block           view (no copy) of block (row, col) of the shared copy
+ * fox_share           ROOT packs global into the block layout, then broadcasts it
+ * fox_unshare         ROOT unpacks the shared copy back into global and returns
+ *                     it; MATRIX_NULL on every other rank
+ * fox_multiply_shared local_c = (my row of blocks) (x) (my column of blocks)
+ * fox_allgather       every rank's local block into its place in shared
+ */
+Matrix fox_block           (const FoxGrid* g, const Matrix shared, i32 row, i32 col);
+void   fox_share           (const FoxGrid* g, const Matrix global, Matrix shared);
+Matrix fox_unshare         (const FoxGrid* g, Matrix global, const Matrix shared);
+void   fox_multiply_shared (const FoxGrid* g, Matrix local_c, const Matrix shared);
+void   fox_allgather       (const FoxGrid* g, Matrix shared, const Matrix local);
 
 #endif

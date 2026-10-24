@@ -4,13 +4,13 @@
 #include "foxgrid.h"
 
 // q such that q * q == p, or 0 if p isn't a perfect square.
-static int exact_sqrt(int p) {
-  const int q = (int)lround(sqrt((double)p));
+static i32 exact_sqrt(i32 p) {
+  const i32 q = (i32)lround(sqrt((f64)p));
   return (q * q == p) ? q : 0;
 }
 
-bool fox_validate(u32 n, int p, int rank) {
-  const int q = exact_sqrt(p);
+bool fox_validate(u32 n, i32 p, i32 rank) {
+  const i32 q = exact_sqrt(p);
   const char* reason = NULL;
 
   if (q == 0)
@@ -21,20 +21,20 @@ bool fox_validate(u32 n, int p, int rank) {
   if (reason == NULL)
     return true;
 
-  // The message on stdout matches tests/examples/output/output5 byte for byte.
+  // The message on stdout matches tests/examples/output/output5 byte for byte (no trailing newline).
   if (rank == 0) {
     fprintf(stderr, "[ERROR]: %s.\n", reason);
-    printf("ERROR: Invalid configuration!\n");
+    printf("ERROR: Invalid configuration!");
   }
   return false;
 }
 
 // https://www.dcc.fc.up.pt/~ricroc/aulas/1011/ppd/apontamentos/guide_mpi.pdf
 void fox_setup_grid(FoxGrid* g) {
-  int dims[2]    = { 0, 0 };
-  int periods[2] = { 1, 1 };      // wrap-around in both dimensions
-  int coords[2];
-  int free_coords[2];
+  i32 dims[2]    = { 0, 0 };
+  i32 periods[2] = { 1, 1 };      // wrap-around in both dimensions
+  i32 coords[2];
+  i32 free_coords[2];
 
   MPI_Comm_size(MPI_COMM_WORLD, &g->p);
 

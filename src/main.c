@@ -17,7 +17,7 @@ i32 main(const i32 argc, const char* argv[]) {
 
   FoxGrid grid;
 
-  MPI_Init((int*)&argc, (char***)&argv);
+  MPI_Init((i32*)&argc, (char***)&argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &nproc);
 
@@ -30,7 +30,7 @@ i32 main(const i32 argc, const char* argv[]) {
     } else {
       fprintf(stderr, "Could not open input file %s\n", argv[1]);
     }
-    n = (input.data == NULL) ? 0 : (int)input.n;
+    n = (input.data == NULL) ? 0 : (i32)input.n;
   }
 
   MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);

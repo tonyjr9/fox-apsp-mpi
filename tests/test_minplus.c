@@ -157,7 +157,7 @@ static void test_apsp_matches_floyd_warshall(void) {
   matrix_free(fw);
 }
 
-int main(void) {
+i32 main(void) {
   test_assignment_squaring();
   test_identity();
   test_all_inf_no_overflow();

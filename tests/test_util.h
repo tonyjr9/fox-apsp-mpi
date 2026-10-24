@@ -3,8 +3,10 @@
 
 #include <stdio.h>
 
-static unsigned tests_run;
-static unsigned tests_failed;
+#include "utils.h"
+
+static u32 tests_run;
+static u32 tests_failed;
 
 #define CHECK(cond)                                                 \
   do {                                                              \
@@ -16,7 +18,7 @@ static unsigned tests_failed;
       }                                                             \
   } while (0)
 
-static int test_report(const char *name) {
+static i32 test_report(const char *name) {
   if (tests_failed == 0) {
     printf("PASS %s (%u checks)\n", name, tests_run);
     return 0;

@@ -13,7 +13,7 @@ struct fox_grid {
     row_comm, // my row; rank inside it == my_col
     col_comm; // my column; rank inside it == my_row
 
-  int
+  i32
     p,        // #processes
     q,        // q * q = processors
     my_rank,  // rank in comm
@@ -29,7 +29,7 @@ struct fox_grid {
  * Only the ROOT process prints: the reason on stderr and
  * "ERROR: Invalid configuration!" on stdout, as the assignment expects.
  */
-bool fox_validate   (u32 n, int p, int rank);
+bool fox_validate   (u32 n, i32 p, i32 rank);
 
 void fox_setup_grid (FoxGrid* g);
 void fox_grid_free  (FoxGrid* g);

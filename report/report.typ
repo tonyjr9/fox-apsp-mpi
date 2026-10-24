@@ -4,8 +4,8 @@
   title: "All-Pairs Shortest Paths with Fox's Algorithm",
   subtitle: "Min-plus repeated squaring distributed with MPI",
   authors: (
-    (name: "Antonio Lanção", id: "up202205416"),
-    (name: "David Sá", id: "up202303580"),
+    (name: "Antonio Lanção",    id: "up202205416"),
+    (name: "David Sá",          id: "up202303580"),
     (name: "Henrique Teixeira", id: "up202306640"),
   ),
   course: "Parallel Computing 2026/27",
@@ -141,6 +141,36 @@ and an `MPI_Allreduce` with `MPI_LOR` decides whether any block changed. The
 cost is one small collective per squaring, which can save several full
 products. #todo[report how many squarings each input actually needs.]
 
+== Shared-copy variant
+
+`fox_shared` is the same algorithm with the communication inside the product
+removed. Every process keeps a full copy of the matrix, stored block by block
+in rank order, so block $(i, j)$ is the $(i Q + j)$-th contiguous
+$N slash Q times N slash Q$ piece. Because every process knows where each
+block is, step $s$ of the product reads $A_(i k)$ and $B_(k j)$, with
+$k = (i + s) mod Q$, straight from memory (`fox_block` returns a view, not a
+copy), instead of receiving them by row broadcast and column shift:
+
+```
+for s = 0 .. Q-1:
+    k = (i + s) mod Q
+    C[i][j] = min(C[i][j], M[i][k] (x) M[k][j])     # M: local copy
+```
+
+Each squaring still needs the whole new matrix everywhere, so after the
+product a single `MPI_Allgather` writes every process's new block into its
+place in every copy. The block layout makes this possible without packing.
+The matrix is broadcast once at the start and unpacked on rank 0 at the end.
+Only `mpi_apsp` differs between the two binaries; `fox_shared` is the same
+source compiled with `-DFOX_SHARED`.
+
+The trade-off is volume and memory. Per squaring, `fox` delivers $2 Q$
+blocks to each process, $2 N^2 slash Q$ values, in $2 Q$ messages that
+overlap the computation. `fox_shared` delivers $N^2$ values to each process
+in one collective that does not overlap anything, $Q slash 2$ times more data,
+and each process holds $N^2 + (N slash Q)^2$ values instead of
+$6 (N slash Q)^2$.
+
 = Validation
 
 - *Unit tests* (`make test`): matrix allocation and copy, input parsing
@@ -201,6 +231,55 @@ $ S(P) = T_"seq" / T(P), quad E(P) = S(P) / P $
     [3000], [], [], [], [], [],
   ),
 ) <speedup>
+
+== Fox against the shared-copy variant
+
+@fox-vs-shared and @fox-vs-shared-times compare `fox` and `fox_shared` on
+random matrices with $N = 2^6, ..., 2^10$ (`matgen`, seed 42), measured
+with `bench/run_power2.sh` on a laptop with an AMD Ryzen 7 7840HS (8 cores,
+16 hardware threads). Values are the median of 3 runs (6 for $P in {4, 16}$).
+$P = 64$ oversubscribes the machine, four processes per hardware thread, so
+those points show contention, not scaling.
+
+#figure(
+  image("power2_fox_vs_shared.png", width: 100%),
+  caption: [Top: median time per $P$, one panel per $N$, each with its own
+    scale. Bottom: `fox_shared` time divided by `fox` time; above 1,
+    `fox_shared` is slower. Shaded: $P$ above the 16 hardware threads.],
+) <fox-vs-shared>
+
+#figure(
+  caption: [Median execution time in milliseconds, `fox` against `fox_shared`.],
+  table(
+    columns: 9,
+    align: (left, ..range(8).map(_ => right)),
+    stroke: (_, y) => (
+      top: if y == 0 { 0.8pt } else if y == 2 { 0.4pt } else { 0pt },
+    ),
+    table.header(
+      [], table.cell(colspan: 2, align: center)[$P = 1$],
+      table.cell(colspan: 2, align: center)[$P = 4$],
+      table.cell(colspan: 2, align: center)[$P = 16$],
+      table.cell(colspan: 2, align: center)[$P = 64$],
+      [$N$], [fox], [shared], [fox], [shared], [fox], [shared], [fox], [shared],
+    ),
+    [64],   [0.18],  [0.13],  [0.19],  [0.15],  [0.47], [0.39],  [7.92], [2.59],
+    [128],  [0.76],  [0.60],  [0.45],  [0.39],  [0.76], [0.62],  [4.67], [5.88],
+    [256],  [5.78],  [5.37],  [1.93],  [1.96],  [2.23], [1.99],  [8.44], [14.6],
+    [512],  [46.0],  [50.0],  [14.1],  [13.0],  [7.42], [11.3],  [18.5], [39.4],
+    [1024], [541.3], [529.4], [128.6], [126.3], [81.9], [107.1], [94.6], [204.6],
+  ),
+) <fox-vs-shared-times>
+
+For $N <= 256$, `fox_shared` is slightly faster (0.8--0.9 of the time of
+`fox` at $P <= 16$). The blocks are tiny there, so the cost of `fox` is the
+latency of its $2 Q$ messages per product rather than their size, and one
+all-gather per squaring is cheaper. As $N$ grows the volume takes over: at
+$P = 16$, `fox_shared` takes 1.52 times as long as `fox` for $N = 512$ and
+1.31 times for $N = 1024$, which is the $Q slash 2 = 2$ times larger
+transfer, not hidden behind computation. At $P = 4$ the two are within a few
+percent, since $Q slash 2 = 1$: both move the same amount of data. At $P = 1$
+both run the same single local product.
 
 == Discussion
 

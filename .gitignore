@@ -3,7 +3,6 @@ test_io*
 seq
 fox
 fox_shared
-fox-colmajor
 compile_commands.json
 matgen
 tests/large/

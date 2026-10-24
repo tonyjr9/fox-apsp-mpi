@@ -34,7 +34,7 @@ static void test_assignment_example(void) {
   CHECK(MAT(m, 0, 1) == 2);
   CHECK(MAT(m, 0, 2) == INF);
   CHECK(MAT(m, 4, 1) == 9);
-  for (uint32_t i = 0; i < 6; i++)
+  for (u32 i = 0; i < 6; i++)
       CHECK(MAT(m, i, i) == 0);
 
   char out[256];
@@ -137,7 +137,7 @@ static void test_bin_malformed_input(void) {
   fclose(f);
 }
 
-int main(void) {
+i32 main(void) {
   test_assignment_example();
   test_tiny_sizes();
   test_diagonal_forced_to_zero();

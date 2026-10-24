@@ -6,8 +6,8 @@
 #
 # Variants:
 #   fox          default row distribution (baseline)
-#   fox-colmajor mirrored scatter: rank r holds block (r%q, r/q)
-#   fox_shared   no communication: every process holds the full matrix
+#   fox_shared   same Fox steps, blocks read from a full local copy;
+#                one all-gather per squaring instead of bcast + shift per step
 #
 # Inputs are rand0_input<N>.bin in the repo root, generated with a fixed
 # seed (matgen, seed 42) when missing. Times are the compute_ms the
@@ -23,7 +23,7 @@ INPUTS=${INPUTS:-"64 128 256 512 1024"}
 NPS=${NPS:-"1 4 9 16"}
 REPS=${REPS:-3}
 MPIRUN=${MPIRUN:-mpirun --oversubscribe}
-VARIANTS=${VARIANTS:-"fox fox-colmajor fox_shared"}
+VARIANTS=${VARIANTS:-"fox fox_shared"}
 OUT=${OUT:-$ROOT/bench/results_power2.csv}
 
 # q with q*q == $1, or 0 if $1 isn't a perfect square
@@ -72,7 +72,8 @@ run() {
         if [ "$np" -eq 1 ]; then
           run "$v" 1 "$n" "./$v"
         else
-          run "$v" "$np" "$n" "$MPIRUN" -np "$np" "./$v"
+          # $MPIRUN unquoted on purpose: it may carry flags (--oversubscribe, --hostfile)
+          run "$v" "$np" "$n" $MPIRUN -np "$np" "./$v"
         fi
       done
     done
@@ -81,7 +82,7 @@ run() {
 
 # Summary on stderr: best of REPS per (N, variant, np), and how the variant
 # compares to the default fox at the same N and np (ratio > 1: fox is slower,
-# i.e. that's the communication the no-comm variant avoids)
+# i.e. what fox pays for its per-step bcast + shift)
 echo >&2
 awk -F, 'NR > 1 && $5 != "NA" {
   key = $1 "," $2 "," $3

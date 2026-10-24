@@ -4,8 +4,8 @@
 static void test_create_and_access(void) {
   Matrix m = matrix_create(3, INF);
   CHECK(m.n == 3);
-  for (uint32_t i = 0; i < 3; i++)
-      for (uint32_t j = 0; j < 3; j++)
+  for (u32 i = 0; i < 3; i++)
+      for (u32 j = 0; j < 3; j++)
           CHECK(MAT(m, i, j) == INF);
 
   MAT(m, 1, 2) = 42;
@@ -41,11 +41,11 @@ static void test_free_null(void) {
 }
 
 static void test_inf_does_not_overflow(void) {
-  uint32_t sum = INF + INF;
+  u32 sum = INF + INF;
   CHECK(sum >= INF);
 }
 
-int main(void) {
+i32 main(void) {
   test_create_and_access();
   test_copy_is_deep();
   test_equal_size_mismatch();
