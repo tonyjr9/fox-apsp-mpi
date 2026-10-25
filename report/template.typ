@@ -76,6 +76,7 @@
     inset: (x: 0.6em, y: 0.45em),
   )
   show table: it => block(stroke: (bottom: 0.8pt), it)
+  show table: set par(justify: false)
   show table.cell.where(y: 0): set text(weight: "bold")
 
   // Figures: small caption, label in accent colour.
@@ -125,6 +126,61 @@
   v(1em)
   body
 }
+
+#let panel = rgb("#eef2f7")
+#let warn-bg = rgb("#fff3cd")
+#let warn-border = rgb("#d4a017")
+
+// Callout with a coloured left rule and a bold label line.
+#let note-box(
+  body,
+  label: "Note",
+  bg: warn-bg,
+  border: warn-border,
+) = block(
+  width: 100%,
+  fill: bg,
+  stroke: (left: 3pt + border),
+  inset: (x: 10pt, y: 8pt),
+  radius: 2pt,
+  {
+    text(weight: "bold", fill: border.darken(30%), label)
+    parbreak()
+    body
+  },
+)
+
+// Numbered stage of a process: a filled circle with the number, then a
+// bold title and its body.
+#let step-block(
+  num,
+  title,
+  body,
+) = block(
+  width: 100%,
+  fill: panel,
+  stroke: (left: 3pt + accent),
+  inset: (x: 10pt, y: 8pt),
+  radius: 2pt,
+  breakable: false,
+  grid(
+    columns: (22pt, 1fr),
+    column-gutter: 10pt,
+    align: (center + top, left + top),
+    box(
+      width: 22pt,
+      height: 22pt,
+      radius: 11pt,
+      fill: accent,
+      align(center + horizon, text(fill: white, weight: "bold", str(num))),
+    ),
+    {
+      text(weight: "bold", fill: accent, title)
+      parbreak()
+      body
+    },
+  ),
+)
 
 // Placeholder for content still to be written; visible in the PDF.
 #let todo(body) = text(fill: rgb("#b03a2e"), [\[TODO: #body\]])
