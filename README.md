@@ -41,7 +41,7 @@ Both binaries print the computation time (excluding I/O) to stderr as
 ├── Makefile
 ├── README.md
 ├── src/
-│   └── main.c            # entry point; built as ./seq, or as ./fox with -DUSE_MPI
+│   └── main.c            # entry point: ./seq; with -DUSE_MPI ./fox_bin, plus -DTEXT_IO ./fox
 ├── lib/
 │   ├── common/           # shared, no MPI
 │   │   ├── matrix.[ch]       # Matrix struct, create/free/copy/equal
@@ -79,12 +79,14 @@ Both binaries print the computation time (excluding I/O) to stderr as
 ## Build
 
 ```
-make            # builds ./seq and ./fox
+make            # builds ./seq, ./fox_bin, ./fox_shared and ./fox
+make fox        # builds ./fox only: text on stdin -> stdout (the assignment)
+make fox_bin    # builds ./fox_bin only: binary files (tests, benchmarks)
 make seq        # builds ./seq only
-make fox        # builds ./fox only
-make text       # builds ./fox with the assignment's text I/O (stdin -> stdout)
 make gen        # random benchmark inputs: N = 2^6 .. 2^14 (seed 42), zipped
 make examples-bin   # convert text examples to the binary format
+make report     # graphs + report/report.pdf from the CSVs in bench/report/
+make dist       # make report, then fox-apsp-mpi.zip for delivery
 make clean
 ```
 
@@ -94,29 +96,27 @@ compute nodes.
 
 ## Run
 
-### Assignment interface (text)
+### Assignment interface (text): `./fox`
 
-The assignment specifies a text matrix on stdin and the result on stdout.
-`make text` builds `./fox` that way (`-DTEXT_IO`, objects in `build/text`):
+As the assignment specifies, `./fox` reads the text matrix from stdin and
+prints the result to stdout:
 
 ```
-make text
+make
 mpirun -np 4 ./fox < tests/examples/input/input6 > output6
 ```
 
-`make fox` and `make text` both write `./fox`; switching between them always
-relinks it, so `./fox` is whichever of the two was built last. `make check-fox`
-and `make bench` rebuild the binary version themselves; before calling
-`bench/run_bench.sh` or `tests/run_tests.sh` directly, run `make fox`.
+### Binary files: `./fox_bin`
 
-### Binary files (benchmarks)
-
-Input and output are binary files (a `u32` N header followed by N x N
-raw `u32` values; the reference conversion is `tests/binconv.c`):
+We also implemented reading and writing a binary format (a `u32` N header
+followed by the N x N raw `u32` values; the reference conversion is
+`tests/binconv.c`). It is faster than parsing and printing text and uses less
+memory, so the tests and benchmarks use it. `./fox_bin` is the same program as
+`./fox` (`src/main.c` without `-DTEXT_IO`), with input and output files:
 
 ```
 ./seq input6.bin output6.bin
-mpirun -np 4 ./fox input6.bin output6.bin
+mpirun -np 4 ./fox_bin input6.bin output6.bin
 ```
 
 The text examples can be converted on the fly: `make examples-bin`
@@ -127,7 +127,7 @@ writes `input/*.bin` / `output/*.bin` next to the originals.
 ```
 make test                     # unit tests: matrix, matrix_io, minplus
 make check-seq                # compare ./seq with tests/examples
-make check-fox                # compare ./fox with tests/examples, np = 1 4 9
+make check-fox                # compare ./fox_bin with tests/examples, np = 1 4 9
 make check-fox NP="4 16"      # other process counts
 make check                    # all of the above
 make time-seq INPUT=tests/examples/input/input600
@@ -139,10 +139,18 @@ is not divisible by sqrt(NP) must be rejected with exactly the content of
 since its reference output is that error message. `MPIRUN` defaults to
 `mpirun --oversubscribe` (Open MPI); override it for MPICH.
 
+## Report data
+
+`report/report.pdf` is built from the CSVs in `bench/report/` (one row per run,
+`bench/run_bench.sh` format): the graphs by `bench/plot_lab.py` and
+`bench/plot_power2.py`, the result tables by Typst itself (`report/bench.typ`
+takes the minimum per configuration). To add results, append their rows to
+the CSV and run `make report`; missing configurations show as `---`.
+
 ## Benchmarks
 
 ```
-make bench                                        # seq + fox, np = 1 4 9 16, 3 reps
+make bench                                        # seq + fox_bin, np = 1 4 9 16, 3 reps
 NPS="1 4 9 16 25" REPS=5 make bench               # other process counts / reps
 MPIRUN="mpirun --hostfile hosts" make bench       # several nodes
 INPUTS="input300 input600" make bench             # subset of tests/examples

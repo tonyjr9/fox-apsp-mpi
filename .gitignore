@@ -2,6 +2,7 @@ build*
 test_io*
 seq
 fox
+fox_bin
 fox_shared
 compile_commands.json
 matgen
@@ -13,3 +14,4 @@ rand0_output.zip
 rand.hostfile
 rand/
 tests/examples/**/*.bin
+fox-apsp-mpi.zip

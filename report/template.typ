@@ -21,7 +21,7 @@
 
   set page(
     paper: "a4",
-    margin: (x: 2.4cm, top: 2.6cm, bottom: 2.6cm),
+    margin: (x: 2.0cm, top: 2.2cm, bottom: 2.2cm),
     header: context {
       if counter(page).get().first() > 1 {
         set text(8pt, fill: muted)

@@ -52,7 +52,7 @@ for f in "$WORK"/rand0_input*.bin; do
 
   echo "=== $name: N=$N grid=${c}x${c} nproc=$p ==="
   if mpirun -n "$p" --hostfile "$WORK.hostfile" \
-      fox "$f" "$WORK/rand0_output$N.bin"; then
+      fox_bin "$f" "$WORK/rand0_output$N.bin"; then
     :
   else
     echo "FAIL $name" >&2

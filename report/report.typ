@@ -1,4 +1,13 @@
 #import "template.typ": report, todo, note-box
+#import "bench.typ": load-best, fox-time, seq-time, fmt-ms, fmt-speedup, ratio, time-rows, speedup-rows, combined-rows
+
+#let lab = load-best("/bench/report/lab_examples.csv")
+#let mac = load-best("/bench/report/mac_examples.csv")
+#let p9-8plus1 = load-best("/bench/report/lab_p9_8plus1.csv")
+#let p9-3x3 = load-best("/bench/report/lab_p9_3x3.csv")
+#let p9-5plus4 = load-best("/bench/report/lab_p9_5plus4.csv")
+#let p9-2x4plus1 = load-best("/bench/report/lab_p9_2x4plus1.csv")
+#let sizes = (300, 600, 900, 1200, 3000)
 
 #show: report.with(
   title: "All-Pairs Shortest Paths with Fox's Algorithm",
@@ -16,8 +25,8 @@
     over a $Q times Q$ process grid by Fox's algorithm in C and MPI. On LabCC,
     four processes on one node reach a speedup of 3.9 on the assignment inputs
     and 4.0 on a random matrix with $N = 16384$. Once the grid spans several
-    nodes, the 1 Gb/s network dominates, and more processes only help on the
-    largest random matrices.
+    nodes, the 1 Gb/s network costs more than the extra processes gain, except
+    on the largest random matrices.
   ],
 )
 
@@ -174,25 +183,22 @@ threads, 16 MB L3) and 14 GB of memory, runs Debian 12, and is connected by
 All five assignment inputs fit $P in {1, 4, 9, 16, 25}$. The hostfile lists
 29 nodes with 8 slots each, filled in order, so $P = 4$ runs on one node,
 $P = 9$ and $P = 16$ on two, and $P = 25$ on four
-(`bench/report/lab_examples.csv`). #todo[$P = 25$ at $N = 3000$ is still running.]
+(`bench/report/lab_examples.csv`).
+#if fox-time(lab, 3000, 25) == none [#todo[$P = 25$ at $N = 3000$ is still running.]]
 
 #figure(
-  image("lab_examples_speedup.png", width: 74%),
+  image("lab_examples_speedup.png", width: 68%),
   caption: [Time (log scale) and speedup on the assignment inputs on LabCC.
     Speedups below 0.5 are left unlabelled; they are in @lab-speedup.],
 ) <lab-examples-plot>
 
 #figure(
-  caption: [Assignment inputs on LabCC: minimum of 3 runs, in milliseconds.],
+  caption: [Assignment inputs on LabCC: minimum of 3 runs in milliseconds.],
   table(
     columns: 7,
     align: (left, ..range(6).map(_ => right)),
     table.header([$N$], [seq], [$P = 1$], [$P = 4$], [$P = 9$], [$P = 16$], [$P = 25$]),
-    [300],  [14.7],   [16.0],   [6.9],   [170.2],  [257.5],  [4628],
-    [600],  [145.5],  [148.5],  [44.3],  [734.5],  [1159.8], [24145],
-    [900],  [430.6],  [433.0],  [139.5], [1820.5], [3151.9], [91880],
-    [1200], [1238.9], [1221.0], [370.6], [3729.3], [5563.7], [225073],
-    [3000], [10249.0], [10334.4], [2663.4], [13346.9], [18320.4], [---],
+    ..time-rows(lab, sizes, (1, 4, 9, 16, 25)),
   ),
 ) <lab-times>
 
@@ -212,27 +218,62 @@ $P = 9$ and $P = 16$ on two, and $P = 25$ on four
       table.cell(colspan: 2, align: center)[$P = 25$],
       [$N$], [$S$], [$S_1$], [$S$], [$S_1$], [$S$], [$S_1$], [$S$], [$S_1$],
     ),
-    [300],  [2.12], [2.31], [0.086], [0.094], [0.057], [0.062], [0.003], [0.003],
-    [600],  [3.29], [3.35], [0.20],  [0.20],  [0.13],  [0.13],  [0.006], [0.006],
-    [900],  [3.09], [3.10], [0.24],  [0.24],  [0.14],  [0.14],  [0.005], [0.005],
-    [1200], [3.34], [3.30], [0.33],  [0.33],  [0.22],  [0.22],  [0.006], [0.005],
-    [3000], [3.85], [3.88], [0.77],  [0.77],  [0.56],  [0.56],  [---],   [---],
+    ..speedup-rows(lab, sizes, (4, 9, 16, 25)),
   ),
 ) <lab-speedup>
 
-With $P = 1$, `fox` is within 2% of `seq` from $N = 600$; at $N = 300$, a
-15 ms run, it is 9% slower, and $S_1$ is correspondingly higher than $S$.
-On one node, four processes reach a speedup of 3.1--3.9 from $N = 600$,
-up to 3.85 at $N = 3000$ (efficiency 0.96). From $P = 9$ the grid spans two nodes, and the
-picture changes completely: with a single process on the second node,
-$P = 9$ is 5--25 times slower than $P = 4$ and slower than `seq` for every
-input, though the gap narrows as $N$ grows (0.77 at $N = 3000$). Each Fox step synchronises a row and a column, so the whole grid
-waits for the transfers over the 1 Gb/s link. $P = 16$ is slower still.
-$P = 25$ takes minutes and varies up to 3.7 times between runs (24 to 90 s
-at $N = 600$), which points to other load on the shared nodes during the
-run, so we draw no conclusion from it. As the random matrices below show,
-two nodes need $N >= 4096$ to break even with `seq`, beyond the assignment
-inputs.
+With $P = 1$, `fox` is within 2% of `seq` from $N = 600$ (9% slower on the
+15 ms run at $N = 300$). On one node, four processes reach 3.1--3.9 from
+$N = 600$, with an efficiency of 0.96 at $N = 3000$. With 9, 16 and 25
+processes, on two to four nodes, this run is slower than `seq` for every
+input, and $P = 25$ varies up to 3.7 times between runs. A rerun of $P = 9$
+(@placement) shows these multi-node times were inflated by other load on the
+shared nodes; we read them as upper bounds.
+
+== Placement of nine processes <placement>
+
+Nine processes do not fit one 8-slot node. We reran $P = 9$ with the default
+placement (8 + 1) and three others (`bench/report/lab_p9_*.csv`, minimum of
+3 runs; 2 for 2 + 2 + 2 + 2 + 1 at $N = 3000$).
+
+#figure(
+  caption: [$P = 9$ on LabCC by placement: time in ms and speedup $S$ against
+    `seq`. "First run" is $P = 9$ from @lab-times.],
+  table(
+    columns: 12,
+    align: (left, ..range(11).map(_ => right)),
+    stroke: (_, y) => (
+      top: if y == 0 { 0.8pt } else if y == 2 { 0.4pt } else { 0pt },
+    ),
+    table.header(
+      [], [], [], [], table.cell(colspan: 2, align: center)[8 + 1],
+      table.cell(colspan: 2, align: center)[5 + 4],
+      table.cell(colspan: 2, align: center)[3 + 3 + 3],
+      table.cell(colspan: 2, align: center)[2+2+2+2+1],
+      [$N$], [seq], [$P = 4$], [first run], [time], [$S$], [time], [$S$], [time], [$S$], [time], [$S$],
+    ),
+    ..sizes.map(n => {
+      let s = seq-time(lab, n)
+      let a = fox-time(p9-8plus1, n, 9)
+      let b = fox-time(p9-5plus4, n, 9)
+      let c = fox-time(p9-3x3, n, 9)
+      let d = fox-time(p9-2x4plus1, n, 9)
+      (
+        [#n], fmt-ms(s), fmt-ms(fox-time(lab, n, 4)), fmt-ms(fox-time(lab, n, 9)),
+        fmt-ms(a), fmt-speedup(ratio(s, a)), fmt-ms(b), fmt-speedup(ratio(s, b)),
+        fmt-ms(c), fmt-speedup(ratio(s, c)), fmt-ms(d), fmt-speedup(ratio(s, d)),
+      )
+    }).flatten(),
+  ),
+) <placement-table>
+
+With the same 8 + 1 placement, the rerun is 4--8 times faster than the first
+run and beats `seq` from $N = 600$ (3.29 at $N = 3000$), but never beats four
+processes on one node. Ranks fill the grid row by row, so with 8 + 1 only the
+row and column of the remote process cross the 1 Gb/s link; with 3 + 3 + 3
+every column shift of $B$ does (8--47% slower); with 5 + 4 every column shift
+and one row broadcast do (21--90% slower); with 2 + 2 + 2 + 2 + 1 every row
+and column spans two nodes, so all transfers cross it (8--17 times slower).
 
 == Assignment inputs on an Apple M1 Max
 
@@ -241,38 +282,40 @@ For comparison we ran the same inputs on a MacBook with an Apple M1 Max
 (`bench/report/mac_examples.csv`). With only 10 cores it can run $P = 1$, 4
 and 9, but not 16 or 25.
 
-#figure(
-  image("mac_examples_speedup.png", width: 74%),
-  caption: [Time (log scale) and speedup on the assignment inputs on the
-    M1 Max.],
-) <mac-plot>
+#grid(
+  columns: (46%, 1fr),
+  column-gutter: 10pt,
+  align: horizon,
+  [#figure(
+    image("mac_examples_speedup.png", width: 100%),
+    caption: [Time (log scale) and speedup on the M1 Max.],
+  ) <mac-plot>],
+  [#figure(
+    caption: [M1 Max: minimum of 3 runs in ms, $S$ against `seq`, $S_1$
+      against $P = 1$.],
+    {
+      set text(8pt)
+      table(
+        columns: 9,
+        inset: (x: 0.35em, y: 0.4em),
+        align: (left, ..range(8).map(_ => right)),
+        stroke: (_, y) => (
+          top: if y == 0 { 0.8pt } else if y == 2 { 0.4pt } else { 0pt },
+        ),
+        table.header(
+          [], [], [], table.cell(colspan: 3, align: center)[$P = 4$],
+          table.cell(colspan: 3, align: center)[$P = 9$],
+          [$N$], [seq], [$P = 1$], [time], [$S$], [$S_1$], [time], [$S$], [$S_1$],
+        ),
+        ..combined-rows(mac, sizes, (4, 9)),
+      )
+    },
+  ) <mac-table>],
+)
 
-#figure(
-  caption: [M1 Max: minimum of 3 runs in ms, speedup $S$ against `seq` and
-    $S_1$ against `fox` with $P = 1$.],
-  table(
-    columns: 9,
-    align: (left, ..range(8).map(_ => right)),
-    stroke: (_, y) => (
-      top: if y == 0 { 0.8pt } else if y == 2 { 0.4pt } else { 0pt },
-    ),
-    table.header(
-      [], [], [], table.cell(colspan: 3, align: center)[$P = 4$],
-      table.cell(colspan: 3, align: center)[$P = 9$],
-      [$N$], [seq], [$P = 1$], [time], [$S$], [$S_1$], [time], [$S$], [$S_1$],
-    ),
-    [300],  [24.0],    [23.7],    [34.2],   [0.70], [0.69], [37.9],   [0.63], [0.63],
-    [600],  [154.8],   [154.6],   [77.9],   [1.99], [1.98], [127.9],  [1.21], [1.21],
-    [900],  [551.9],   [545.0],   [186.5],  [2.96], [2.92], [229.1],  [2.41], [2.38],
-    [1200], [1363.2],  [1373.9],  [377.5],  [3.61], [3.64], [386.3],  [3.53], [3.56],
-    [3000], [11658.2], [11749.5], [3114.7], [3.74], [3.77], [1849.1], [6.30], [6.35],
-  ),
-) <mac-table>
-
-All processes share one machine here, so $P = 9$ does not suffer the
-network penalty it has on LabCC: it is slower than $P = 4$ up to
-$N = 1200$, with three communication steps per product instead of two and
-one process on an efficiency core, but reaches 6.30 at $N = 3000$.
+On one machine $P = 9$ avoids the network: it trails $P = 4$ up to
+$N = 1200$ (three steps per product, one process on an efficiency core) but
+reaches 6.30 at $N = 3000$.
 
 == Random matrices on LabCC
 
@@ -281,38 +324,36 @@ are the process counts whose $Q$ divides a power of two
 (`bench/report/lab_rand0.csv`).
 
 #figure(
-  image("lab_rand0_speedup.png", width: 74%),
+  image("lab_rand0_speedup.png", width: 68%),
   caption: [Time (log scale) and speedup on the random matrices on LabCC.
     Labels close to one already shown are omitted.],
 ) <lab-plot>
 
-With four processes, efficiency stays between 0.89 and 1.11 from
-$N = 1024$, slightly above 1 where the smaller blocks fit the cache better.
-Across nodes, $P = 16$ and $P = 64$ take about the same time (within 15%
-from $N = 128$ to 8192): the network, not the process count, sets the time. Both are slower
-than `seq` up to $N = 2048$ and break even at $N = 4096$. At $N = 16384$,
-$P = 16$ reaches 3.88, still below $P = 4$ (4.01), and $P = 64$ reaches
-5.00, with efficiencies of 0.24 and 0.08.
+With four processes, efficiency stays between 0.89 and 1.11 from $N = 1024$.
+$P = 16$ and $P = 64$ take about the same time (within 15% from $N = 128$ to
+8192), so the network, not the process count, sets it. They break even with
+`seq` at $N = 4096$ and reach 3.88 and 5.00 at $N = 16384$ ($P = 4$: 4.01).
 
 == Fox against the shared copy
 
+
 #figure(
-  image("power2_fox_vs_shared.png", width: 80%),
-  caption: [`fox` against `fox_shared` on an AMD Ryzen 7 7840HS (16 hardware
-    threads; shaded $P$ oversubscribes it), median of 3 to 6 runs. Bottom:
-    `fox_shared` time over `fox` time.],
+  image("power2_fox_vs_shared.png", width: 72%),
+  caption: [`fox` against `fox_shared`, median of 3 to 6 runs. Bottom:
+    `fox_shared` time over `fox` time; shaded $P$ oversubscribes the 16
+    hardware threads.],
 ) <shared-plot>
 
-For $N <= 256$, `fox_shared` is mostly slightly faster, down to 0.8 of the
-time of `fox`: the blocks are tiny, so one all-gather beats $2 Q$
-latency-bound messages. From $N = 512$ the volume
-dominates: at $P = 16$, `fox_shared` takes 1.3--1.5 times as long, the
-$Q slash 2 = 2$ times larger transfer that it cannot overlap. At $P = 4$, where
-$Q slash 2 = 1$, the two are within a few percent.
+On an AMD Ryzen 7 7840HS laptop (`bench/report/results_power2.csv`, random
+matrices with $N = 2^6, ..., 2^10$), `fox_shared` is mostly faster, by up to
+28%, for $N <= 256$, where one all-gather beats $2 Q$ latency-bound messages. From
+$N = 512$, at $P = 16$, it takes 1.3--1.5 times as long: it moves
+$Q slash 2 = 2$ times more data, without overlap. At $P = 4$ ($Q slash 2 = 1$)
+the two are within a few percent.
 
 = Conclusions
 
-Fox scales well within a node: four processes reach a speedup of up to 3.9
-on the assignment inputs. Across nodes the 1 Gb/s network dominates: several
-nodes beat `seq` clearly only from $N = 8192$, and four processes only at 16384. Overlapping the
-transfers keeps `fox` ahead of `fox_shared` once the matrices are large.
+Fox scales well within a node: four processes reach a speedup of up to 3.9.
+Across nodes the 1 Gb/s link costs more than the extra processes gain, and
+only 64 processes beat four, at $N = 16384$. Overlapping the transfers keeps
+`fox` ahead of `fox_shared` on large matrices.

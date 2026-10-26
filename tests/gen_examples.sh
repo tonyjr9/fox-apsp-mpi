@@ -4,7 +4,7 @@
 #   ./tests/gen_examples.sh                       # default sizes into tests/large
 #   ./tests/gen_examples.sh 5040 10080            # chosen sizes
 #   OUT_DIR=tests/examples ./tests/gen_examples.sh 840
-#   REF="mpirun -np 16 ./fox" ./tests/gen_examples.sh 10080   # faster reference
+#   REF="mpirun -np 16 ./fox_bin" ./tests/gen_examples.sh 10080   # faster reference
 #
 # Files are written as $OUT_DIR/input/inputN and $OUT_DIR/output/outputN, so
 # the result can be checked with EXAMPLES_DIR=$OUT_DIR ./tests/run_tests.sh.

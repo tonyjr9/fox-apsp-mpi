@@ -41,8 +41,11 @@ for n in $INPUTS; do
   fi
 done
 
+# The fox variant is the fox_bin executable (fox itself reads text from stdin)
+bin_of() { [ "$1" = fox ] && echo fox_bin || echo "$1"; }
+
 for v in $VARIANTS; do
-  [ -x "$v" ] || { echo "error: $v not found, run make first" >&2; exit 1; }
+  [ -x "$(bin_of "$v")" ] || { echo "error: $(bin_of "$v") not found, run make first" >&2; exit 1; }
 done
 
 ERR=$(mktemp)
@@ -70,10 +73,10 @@ run() {
       [ "$q" -eq 0 ] || [ $((n % q)) -ne 0 ] && { echo "skip: N=$n with np=$np" >&2; continue; }
       for v in $VARIANTS; do
         if [ "$np" -eq 1 ]; then
-          run "$v" 1 "$n" "./$v"
+          run "$v" 1 "$n" "./$(bin_of "$v")"
         else
           # $MPIRUN unquoted on purpose: it may carry flags (--oversubscribe, --hostfile)
-          run "$v" "$np" "$n" $MPIRUN -np "$np" "./$v"
+          run "$v" "$np" "$n" $MPIRUN -np "$np" "./$(bin_of "$v")"
         fi
       done
     done

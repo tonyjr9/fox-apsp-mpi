@@ -105,7 +105,7 @@ On the server, inside the project folder (the program takes the input
 matrix file and an output file):
 
 ```sh
-mpirun -n 32 --hostfile hostfile.txt fox input6.bin output6.bin
+mpirun -n 32 --hostfile hostfile.txt fox_bin input6.bin output6.bin
 ```
 
 By default `mpirun` fills the first machine in the hostfile up to its
@@ -114,7 +114,7 @@ machine. To launch round robin (one process on each machine at a
 time):
 
 ```sh
-mpirun -np 32 --hostfile hostfile.txt --map-by node fox input6.bin output6.bin
+mpirun -np 32 --hostfile hostfile.txt --map-by node fox_bin input6.bin output6.bin
 ```
 
 ### Run the benchmarks

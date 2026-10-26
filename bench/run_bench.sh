@@ -12,7 +12,7 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 INPUT_DIR="$ROOT/tests/examples/input"
 BIN_SEQ=${BIN_SEQ:-$ROOT/seq}
-BIN_FOX=${BIN_FOX:-$ROOT/fox}
+BIN_FOX=${BIN_FOX:-$ROOT/fox_bin}
 INPUTS=${INPUTS:-"input300 input600 input900 input1200 input3000"}
 NPS=${NPS:-"1 4 9 16"}
 REPS=${REPS:-3}

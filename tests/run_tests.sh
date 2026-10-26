@@ -2,7 +2,7 @@
 #
 # Regression on tests/examples.
 #   ./tests/run_tests.sh                    # sequential: ./seq
-#   BIN=./fox NP=4 ./tests/run_tests.sh     # MPI: $MPIRUN -np 4 ./fox
+#   BIN=./fox_bin NP=4 ./tests/run_tests.sh # MPI: $MPIRUN -np 4 ./fox_bin
 #
 # The binaries take the input matrix as a binary file and write the result to
 # a binary output file: inputs are <input><BIN_SUFFIX>, and the output is
