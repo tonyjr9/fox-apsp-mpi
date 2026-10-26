@@ -82,6 +82,7 @@ Both binaries print the computation time (excluding I/O) to stderr as
 make            # builds ./seq and ./fox
 make seq        # builds ./seq only
 make fox        # builds ./fox only
+make text       # builds ./fox with the assignment's text I/O (stdin -> stdout)
 make gen        # random benchmark inputs: N = 2^6 .. 2^14 (seed 42), zipped
 make examples-bin   # convert text examples to the binary format
 make clean
@@ -92,6 +93,23 @@ The MPI build requires an implementation providing `mpicc` (Open MPI or MPICH).
 compute nodes.
 
 ## Run
+
+### Assignment interface (text)
+
+The assignment specifies a text matrix on stdin and the result on stdout.
+`make text` builds `./fox` that way (`-DTEXT_IO`, objects in `build/text`):
+
+```
+make text
+mpirun -np 4 ./fox < tests/examples/input/input6 > output6
+```
+
+`make fox` and `make text` both write `./fox`; switching between them always
+relinks it, so `./fox` is whichever of the two was built last. `make check-fox`
+and `make bench` rebuild the binary version themselves; before calling
+`bench/run_bench.sh` or `tests/run_tests.sh` directly, run `make fox`.
+
+### Binary files (benchmarks)
 
 Input and output are binary files (a `u32` N header followed by N x N
 raw `u32` values; the reference conversion is `tests/binconv.c`):

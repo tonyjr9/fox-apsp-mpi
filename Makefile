@@ -7,6 +7,13 @@ LDLIBS   += -lm
 
 BUILD := build
 
+# make text: fox with the assignment's interface (text on stdin -> stdout).
+ifdef TEXT_IO
+CPPFLAGS += -DTEXT_IO
+BUILD    := build/text
+endif
+FOX_MODE := build/fox-$(if $(TEXT_IO),text,bin).mode
+
 COMMON_SRC := $(wildcard lib/common/*.c)
 COMMON_OBJ := $(COMMON_SRC:%.c=$(BUILD)/%.o)
 
@@ -23,12 +30,22 @@ NP ?= 1 4 9
 MATRICES_2_TO_THE = 6 7 8 9 10 11 12 13 14
 GEN_SEED ?= 42
 
-.PHONY: all test check check-seq check-fox bench time-seq gen examples-bin clean
+.PHONY: all text test check check-seq check-fox bench time-seq gen examples-bin clean
 
 all: seq fox fox_shared
 
-fox: $(FOX_OBJ) $(COMMON_OBJ)
-	$(MPICC) $(CFLAGS) -o $@ $^ $(LDLIBS)
+fox: $(FOX_OBJ) $(COMMON_OBJ) $(FOX_MODE)
+	$(MPICC) $(CFLAGS) -o $@ $(FOX_OBJ) $(COMMON_OBJ) $(LDLIBS)
+
+text:
+	$(MAKE) TEXT_IO=1 fox
+
+# Marks which I/O mode ./fox was last linked in; switching modes recreates it,
+# newer than ./fox, which forces the relink.
+build/fox-%.mode:
+	@mkdir -p build
+	@rm -f build/fox-*.mode
+	@touch $@
 
 # Shared variant: same Fox steps, blocks read from a full local copy instead
 # of being communicated (lib/mpi/fox.h). Only apsp_mpi.c differs.

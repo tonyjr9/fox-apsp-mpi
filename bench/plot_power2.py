@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Plot fox vs fox_shared from bench/results_power2.csv.
+Plot fox vs fox_shared from bench/report/results_power2.csv.
   python3 bench/plot_power2.py [csv] [out.png]
 
 Top row: median compute_ms per np, one panel per N (each panel has its own
@@ -18,7 +18,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CSV  = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "bench", "results_power2.csv")
+CSV  = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "bench", "report", "results_power2.csv")
 OUT  = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, "report", "power2_fox_vs_shared.png")
 HW_THREADS = int(os.environ.get("HW_THREADS", os.cpu_count() or 16))
 

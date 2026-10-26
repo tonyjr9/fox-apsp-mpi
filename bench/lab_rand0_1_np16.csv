@@ -1,0 +1,9 @@
+impl,np,input,n,rep,compute_ms
+fox,16,rand0_input1024,1024,1,2627.214
+fox,16,rand0_input1024,1024,2,2540.692
+fox,16,rand0_input2048,2048,1,10150.929
+fox,16,rand0_input2048,2048,2,10067.809
+fox,16,rand0_input4096,4096,1,38739.933
+fox,16,rand0_input4096,4096,2,41719.730
+fox,16,rand0_input16384,16384,1,768968.406
+fox,16,rand0_input16384,16384,2,764353.831

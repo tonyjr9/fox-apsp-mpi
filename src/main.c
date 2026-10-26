@@ -5,11 +5,15 @@
 
 #include "apsp_mpi.h"
 
+// TEXT_IO (make text): the assignment's interface, text matrix on stdin and
+// result on stdout. Otherwise: binary input and output files, for benchmarks.
 i32 main(const i32 argc, const char* argv[]) {
+#ifndef TEXT_IO
   if (argc < 3) {
     fprintf(stderr, "Expected file name path to matrix binary and output file name\n");
     return 1;
   }
+#endif
 
   i32 n = 0, my_rank, nproc;
 
@@ -21,8 +25,11 @@ i32 main(const i32 argc, const char* argv[]) {
   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &nproc);
 
-  // Only the root reads the input file; the others learn n from the broadcast.
+  // Only the root reads the input; the others learn n from the broadcast.
   if (my_rank == 0) {
+#ifdef TEXT_IO
+    input = matrix_read(stdin);
+#else
     FILE* in = fopen(argv[1], "rb");
     if (in != NULL) {
       input = matrix_read_bin(in);
@@ -30,6 +37,7 @@ i32 main(const i32 argc, const char* argv[]) {
     } else {
       fprintf(stderr, "Could not open input file %s\n", argv[1]);
     }
+#endif
     n = (input.data == NULL) ? 0 : (i32)input.n;
   }
 
@@ -54,6 +62,9 @@ i32 main(const i32 argc, const char* argv[]) {
   if (my_rank == 0) {
     fprintf(stderr, "compute_ms=%.3f\n", elapsed_ms);
 
+#ifdef TEXT_IO
+    matrix_print(stdout, result);
+#else
     FILE* out = fopen(argv[2], "wb");
     if (out == NULL) {
       fprintf(stderr, "Could not open output file %s\n", argv[2]);
@@ -63,6 +74,7 @@ i32 main(const i32 argc, const char* argv[]) {
 
     matrix_write_bin(out, result);
     fclose(out);
+#endif
   }
 
   // On the root, result is input (written in place); elsewhere both are MATRIX_NULL.
